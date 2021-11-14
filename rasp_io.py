@@ -189,7 +189,7 @@ room_capacity = {room.id : int(room.capacity) for room in classrooms}
 
 OPT = Optimizer(summer_rasps, nasts, FIXED, FREE_TERMS, professor_available, classroom_available, computer_rooms, room_capacity, students_estimate)
 sample = OPT.initialize_random_sample(10)
-start = pd.Series([s[0] for s in sample]).describe()
-sample = OPT.iterate(sample, 10)
-end = pd.Series([s[0] for s in sample]).describe()
+start = pd.Series([s[0]["totalScore"] for s in sample]).describe()
+sample = OPT.iterate(sample, 100, population_cap = 10)
+end = pd.Series([s[0]["totalScore"] for s in sample]).describe()
 print(start, end, start-end)

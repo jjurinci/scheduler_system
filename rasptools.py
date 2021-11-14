@@ -44,7 +44,7 @@ class Optimizer:
                 avs.remove(slot)
             timetable.update(self.fixed)
             sample.append((self.grade(timetable), timetable))
-        sample.sort(key=itemgetter(0), reverse=True)
+        sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
         sample = sample[:N]
         return sample
 
@@ -53,13 +53,12 @@ class Optimizer:
         for _ in tqdm(range(10*N)):
             s = self.mutate(sample0)
             sample.append((self.grade(s), s))
-        sample.sort(key=lambda x: x[0], reverse=True)
+        sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
         sample = sample[:N]
         return sample
 
 
     def grade(self, timetable, verbose=False):
-        score = 0
         room_taken = {k:v.copy() for k,v in self.occupied.items()}
         if verbose:
             initial_room_taken = {k:v.copy() for k,v in self.occupied.items()}
@@ -71,6 +70,9 @@ class Optimizer:
             room_taken[room][day, hour:(hour + rasp.duration)] += 1
             prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)] -= 1
 
+        total_score = 0
+        total_room_score, total_professor_score = 0, 0
+        total_capacity_score, total_computers_score = 0, 0
         for rasp, (room, day, hour) in timetable.items():
 
             # Room collisions
@@ -81,7 +83,8 @@ class Optimizer:
                 print(initial_room_taken[room])
                 print(room_taken[room])
                 print(rasp)
-            score -= score_rooms
+            total_room_score -= score_rooms
+            total_score -= score_rooms
 
             # Professor collisions
             cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]<0)
@@ -90,45 +93,61 @@ class Optimizer:
                 print(f"Professor collision ({rasp.professorId}): {score_professors}")
                 print(prof_taken[rasp.professorId])
                 print(rasp)
-            score -= score_professors
+            total_professor_score -= score_professors
+            total_score -= score_professors
 
             # Insufficient room capacity
             capacity = bool(self.students[rasp] - self.room_capacity[room]>=0)
             score_capacity = capacity * rasp.duration * self.students[rasp]
             if verbose and capacity:
                 print(f"Capacity ({room},{rasp.subjectId},{self.students[rasp]}): {score_capacity}")
-            score -= score_capacity
+            total_capacity_score -= score_capacity
+            total_score -= score_capacity
 
             # Computer room & computer rasp collisions
             if not room in self.computer_rooms and rasp.needsComputers:
                 score_computers = self.students[rasp]
                 if verbose and score_computers:
                     print(f"Computer rasp in non-computer room {rasp.subjectId}/{room}: {score_computers}")
-                score -= score_computers
+                total_computers_score -= score_computers
+                total_score -= score_computers
 
             if room in self.computer_rooms and not rasp.needsComputers:
                 score_computers = self.students[rasp] * 0.1
                 if verbose and score_computers:
                     print(f"Non-computer rasp in computer room {rasp.subjectId}/{room}: {score_computers}")
-                score -= score_computers
+                total_computers_score -= score_computers
+                total_score -= score_computers
 
         # Nast collisions
+        total_nast_score = 0
         for semester, the_nasts in self.nasts.items():
             score_nasts = 0
             for nast in the_nasts:
                 nast_taken =  np.zeros((5,16), dtype=np.int32)
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
-                    nast_taken[day,hour:(rasp.duration+hour)] += 1
+                    nast_taken[day, hour:(rasp.duration + hour)] += 1
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
-                    cnt = sum(nast_taken[day,hour:(rasp.duration+hour)]>1)
-                    score_nasts += cnt*self.students[rasp]
+                    cnt = sum(nast_taken[day, hour:(rasp.duration + hour)]>1)
+                    score_nasts += cnt * self.students[rasp]
             if verbose and score_nasts:
                 print(f"Nast collisions {semester}: {score_nasts}")
                 print(nast_taken)
-            score -= score_nasts
-        return score
+            total_nast_score -= score_nasts
+            total_score -= score_nasts
+
+        final_score = {
+                "totalScore": total_score,
+                "roomScore": total_room_score,
+                "professorScore": total_professor_score,
+                "capacityScore": total_capacity_score,
+                "computerScore": total_computers_score,
+                "nastScore": total_nast_score
+        }
+
+        return final_score
 
     def mutate(self, timetable):
         new_timetable = timetable.copy()
@@ -137,14 +156,14 @@ class Optimizer:
         new_timetable.pop(rasp0, 0)
 
         avs = self.free_terms.copy()
-        for rasp, (dvorana, dan, sat) in new_timetable.items():
-            terms = {(dvorana, dan, sat+i) for i in range(rasp.duration)}
+        for rasp, (room, day, hour) in new_timetable.items():
+            terms = {(room, day, hour+i) for i in range(rasp.duration)}
             avs -= terms
 
         nonavs = set()
-        for (dvorana, dan, sat) in avs:
-            if any((dvorana, dan, sat+i) not in avs for i in range(1,rasp0.duration)):
-                nonavs.add((dvorana, dan, sat))
+        for (room, day, hour) in avs:
+            if any((room, day, hour+i) not in avs for i in range(1,rasp0.duration)):
+                nonavs.add((room, day, hour))
 
         avs -= nonavs
         slot = random.choice(list(avs))
@@ -152,22 +171,24 @@ class Optimizer:
         return new_timetable
 
 
-    def crossover(self, t1, t2):
-        return {k:random.choice([t1[k],t2[k]]) for k in t1}
+    def crossover(self, timetable1, timetable2):
+        return {rasp:random.choice([timetable1[rasp],timetable2[rasp]])
+                for rasp in timetable1}
 
 
-    def cross_and_grade(self, x):
-        x1 = self.crossover(x[0], x[1])
-        return self.grade(x1), x1
+    def cross_and_grade(self, two_timetables):
+        one_timetable = self.crossover(two_timetables[0], two_timetables[1])
+        return self.grade(one_timetable), one_timetable
 
 
-    def mutate_and_grade(self, x):
-        x1 = self.mutate(x)
-        return self.grade(x1),x1
+    def mutate_and_grade(self, timetable):
+        timetable = self.mutate(timetable)
+        return self.grade(timetable), timetable
+
 
     def iterate(self, sample, generations=100, starting_generation=1, population_cap=512):
-        BEST = (sample[0][0], sample[0][1].copy())
-        print(starting_generation-1, BEST[0])
+        BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+        print(starting_generation-1, BEST_SAMPLE[0])
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
 
             with Pool(7) as p:
@@ -175,17 +196,17 @@ class Optimizer:
 
                 mutations = p.map(self.mutate_and_grade, the_samples)
 
-                cross1 = random.sample(the_samples, 10)
-                cross2 = random.sample(the_samples, 10)
+                size = len(the_samples) if 10 > len(the_samples) else 10
+                cross1 = random.sample(the_samples, size)
+                cross2 = random.sample(the_samples, size)
                 crossover_pairs = [(t1, t2) for t1, t2 in product(cross1, cross2)]
                 crossovers = p.map(self.cross_and_grade, crossover_pairs)
 
-
             sample += mutations+crossovers
             sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
-            sample.sort(key=itemgetter(0), reverse=True)
+            sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
             sample = sample[0:population_cap]
-            if sample[0][0] > BEST[0]:
-                BEST = (sample[0][0], sample[0][1].copy())
-                tqdm.write(f"{generation}, {BEST[0]}")
+            if sample[0][0]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
+                BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+                tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
         return sample
