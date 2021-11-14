@@ -60,73 +60,73 @@ class Optimizer:
 
     def grade(self, timetable, verbose=False):
         score = 0
-        dz = {k:v.copy() for k,v in self.occupied.items()}
+        room_taken = {k:v.copy() for k,v in self.occupied.items()}
         if verbose:
-            dz0 = {k:v.copy() for k,v in self.occupied.items()}
+            initial_room_taken = {k:v.copy() for k,v in self.occupied.items()}
 
-        ns = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
-        ns.update({k:v.copy() for k,v in self.professor_available.items()})
-
-        for rasp, (room, day, hour) in timetable.items():
-            dz[room][day,hour:(hour+rasp.duration)] += 1
-            ns[rasp.professorId][day,hour:(hour+rasp.duration)] -= 1
+        prof_taken = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
+        prof_taken.update({k:v.copy() for k,v in self.professor_available.items()})
 
         for rasp, (room, day, hour) in timetable.items():
-            cnt = sum(dz[room][day,hour:(hour+rasp.duration)]>1)
+            room_taken[room][day, hour:(hour + rasp.duration)] += 1
+            prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)] -= 1
 
-            # broj kolizija dvorana i nastavnika
-            score_rooms = cnt*self.students[rasp]
+        for rasp, (room, day, hour) in timetable.items():
+
+            # Room collisions
+            cnt = sum(room_taken[room][day, hour:(hour + rasp.duration)]>1)
+            score_rooms = cnt * self.students[rasp]
             if verbose and score_rooms:
-                print(f"Kolizije dvorane ({room}): {score_rooms}")
-                print(dz0[room])
-                print(dz[room])
-                print(repr(rasp))
+                print(f"Room collision ({room}): {score_rooms}")
+                print(initial_room_taken[room])
+                print(room_taken[room])
+                print(rasp)
             score -= score_rooms
 
-            cnt = sum(ns[rasp.professorId][day,hour:(hour+rasp.duration)]<0)
-
-            score_professors = cnt*self.students[rasp]
+            # Professor collisions
+            cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]<0)
+            score_professors = cnt * self.students[rasp]
             if verbose and score_professors:
-                print(f"Kolizije nastavnika ({rasp.professorId}): {score_professors}")
-                print(ns[rasp.professorId])
-                print(repr(rasp))
+                print(f"Professor collision ({rasp.professorId}): {score_professors}")
+                print(prof_taken[rasp.professorId])
+                print(rasp)
             score -= score_professors
 
-            # nedostatan kapacitet
-            capacity = bool(self.students[rasp]-self.room_capacity[room]>=0)
+            # Insufficient room capacity
+            capacity = bool(self.students[rasp] - self.room_capacity[room]>=0)
             score_capacity = capacity * rasp.duration * self.students[rasp]
             if verbose and capacity:
-                print(f"Kapacitet ({room},{rasp.subjectId},{self.students[rasp]}): {score_capacity}")
+                print(f"Capacity ({room},{rasp.subjectId},{self.students[rasp]}): {score_capacity}")
             score -= score_capacity
 
-            # zabranjene dvorane
+            # Computer room & computer rasp collisions
             if not room in self.computer_rooms and rasp.needsComputers:
                 score_computers = self.students[rasp]
                 if verbose and score_computers:
-                    print(f"Računalnu predmet u ne-računalnoj {rasp.subjectId}/{room}: {score_computers}")
+                    print(f"Computer rasp in non-computer room {rasp.subjectId}/{room}: {score_computers}")
                 score -= score_computers
 
             if room in self.computer_rooms and not rasp.needsComputers:
-                score_computers = self.students[rasp]*0.1
+                score_computers = self.students[rasp] * 0.1
                 if verbose and score_computers:
-                    print(f"Neračunalni predmet u računalnoj {rasp.subjectId}/{room}: {score_computers}")
+                    print(f"Non-computer rasp in computer room {rasp.subjectId}/{room}: {score_computers}")
                 score -= score_computers
 
-        # kolizije po nastovima
+        # Nast collisions
         for semester, the_nasts in self.nasts.items():
             score_nasts = 0
             for nast in the_nasts:
-                z =  np.zeros((5,16), dtype=np.int32)
+                nast_taken =  np.zeros((5,16), dtype=np.int32)
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
-                    z[day,hour:(rasp.duration+hour)] += 1
+                    nast_taken[day,hour:(rasp.duration+hour)] += 1
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
-                    cnt = sum(z[day,hour:(rasp.duration+hour)]>1)
+                    cnt = sum(nast_taken[day,hour:(rasp.duration+hour)]>1)
                     score_nasts += cnt*self.students[rasp]
             if verbose and score_nasts:
-                print(f"Kolizije na studiju {semester}: {score_nasts}")
-                print(z)
+                print(f"Nast collisions {semester}: {score_nasts}")
+                print(nast_taken)
             score -= score_nasts
         return score
 
