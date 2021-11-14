@@ -18,7 +18,7 @@ def dohvati_nastove(predmeti, izbornih=1):
     predmeti = predmeti[1:]
     odabiri = frozenset(frozenset(x) for x in product(*predmet.rasps.values()))
     preskočen = frozenset()
-    if predmet.mandatory == "0":
+    if not predmet.mandatory:
         preskočen = dohvati_nastove(predmeti, izbornih)
 
         if izbornih:
@@ -61,7 +61,7 @@ for semester in summer_semesters:
     has_optional_subjects = semester.hasOptionalSubjects
 
     filtered_subjects = list(filter(lambda s: sem_id in s.semesterIds, subjects))
-    q = dohvati_nastove(filtered_subjects, izbornih=int(has_optional_subjects))
+    q = dohvati_nastove(filtered_subjects, izbornih=has_optional_subjects)
 
     if q is None:
         q = frozenset(frozenset())
@@ -177,15 +177,15 @@ for semester, the_nasts in nasts.items():
     if not the_nasts:
         continue
 
-    num_students = int(semester[2])
+    num_students = semester[2]
     stud_per_nast = num_students/len(the_nasts)
     for nast in the_nasts:
         margin = {rasp: stud_per_nast for rasp in nast}
         students_estimate.update(margin)
 
 FIXED = {}
-computer_rooms = set(room.id for room in classrooms if room.hasComputers == "1")
-room_capacity = {room.id : int(room.capacity) for room in classrooms}
+computer_rooms = set(room.id for room in classrooms if room.hasComputers)
+room_capacity = {room.id : room.capacity for room in classrooms}
 
 OPT = Optimizer(summer_rasps, nasts, FIXED, FREE_TERMS, professor_available, classroom_available, computer_rooms, room_capacity, students_estimate)
 sample = OPT.initialize_random_sample(10)

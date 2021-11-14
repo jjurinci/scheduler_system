@@ -14,8 +14,15 @@ def get_semesters():
     with open("data/semesters.json", "r") as fp:
         semesters = json.load(fp)["semesters"]
 
-    semesters = [Semester(**{field: sem[field] for field in Semester._fields}) for sem in semesters]
-    return semesters
+    typed_semesters = []
+    for semester in semesters:
+        semester["numSemester"] = int(semester["numSemester"])
+        semester["hasOptionalSubjects"] = int(semester["hasOptionalSubjects"])
+        semester["numStudents"] = int(semester["numStudents"])
+        semester = Semester(**{field: semester[field] for field in Semester._fields})
+        typed_semesters.append(semester)
+
+    return typed_semesters
 
 
 def get_professors():
@@ -30,32 +37,45 @@ def get_classrooms():
     with open("data/classrooms.json", "r") as fp:
         classrooms = json.load(fp)["classrooms"]
 
-    classrooms = [Classroom(**{field: classr[field] for field in Classroom._fields}) for classr in classrooms]
-    return classrooms
+    typed_classrooms = []
+    for classroom in classrooms:
+        classroom["capacity"] = int(classroom["capacity"])
+        classroom["hasComputers"] = True if classroom["hasComputers"]=="1" else False
+        classroom = Classroom(**{field: classroom[field] for field in Classroom._fields})
+        typed_classrooms.append(classroom)
+
+    return typed_classrooms
 
 
 def get_subjects():
     with open("data/subjects.json", "r") as fp:
         subjects = json.load(fp)["subjects"]
 
-    new_subjects = []
-    for sub in subjects:
-        sub["rasps"] = None
-        sub["semesterIds"] = tuple(sub["semesterIds"])
-        new_subject = Subject(**{field: sub[field] for field in Subject._fields})
-        new_subjects.append(new_subject)
+    typed_subjects = []
+    for subject in subjects:
+        subject["rasps"] = None
+        subject["semesterIds"] = tuple(subject["semesterIds"])
+        subject["mandatory"] = True if subject["mandatory"]=="1" else False
+        subject = Subject(**{field: subject[field] for field in Subject._fields})
+        typed_subjects.append(subject)
 
-    return new_subjects
+    return typed_subjects
 
 
 def get_rasps():
     with open("data/rasps.json", "r") as fp:
         rasps = json.load(fp)["rasps"]
 
-    rasps = [Rasp(**{field: int(rasp[field]) if field=="duration"
-                                             else rasp[field]
-                                             for field in Rasp._fields}) for rasp in rasps]
-    return rasps
+    typed_rasps = []
+    for rasp in rasps:
+        rasp["duration"] = int(rasp["duration"])
+        rasp["mandatory"] = True if rasp["mandatory"] == "1" else False
+        rasp["needsComputers"] = True if rasp["needsComputers"] == "1" else False
+        rasp["totalGroups"] = int(rasp["totalGroups"])
+        rasp = Rasp(**{field: rasp[field] for field in Rasp._fields})
+        typed_rasps.append(rasp)
+
+    return typed_rasps
 
 
 def get_winter_semesters():
