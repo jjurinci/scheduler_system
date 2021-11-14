@@ -8,27 +8,27 @@ import data_api
 from my_types import Subject
 
 
-def dohvati_nastove(predmeti, izbornih=1):
-    if (not predmeti and izbornih) or izbornih<0:
+def get_nasts(subjects, optionals=1):
+    if (not subjects and optionals) or optionals<0:
         return frozenset()
-    elif not predmeti:
+    elif not subjects:
         return frozenset([frozenset()])
 
-    predmet = predmeti[0]
-    predmeti = predmeti[1:]
-    odabiri = frozenset(frozenset(x) for x in product(*predmet.rasps.values()))
-    preskočen = frozenset()
-    if not predmet.mandatory:
-        preskočen = dohvati_nastove(predmeti, izbornih)
+    subject = subjects[0]
+    subjects = subjects[1:]
+    choices = frozenset(frozenset(x) for x in product(*subject.rasps.values()))
+    later_included = frozenset()
+    if not subject.mandatory:
+        later_included = get_nasts(subjects, optionals)
 
-        if izbornih:
-            uključen = dohvati_nastove(predmeti, izbornih-1)
+        if optionals:
+            included = get_nasts(subjects, optionals-1)
         else:
-            uključen = frozenset()
+            included = frozenset()
     else:
-        uključen = dohvati_nastove(predmeti, izbornih)
-    uključen = frozenset(od|li for od, li in product(odabiri, uključen))
-    return uključen|preskočen
+        included = get_nasts(subjects, optionals)
+    included = frozenset(od|li for od, li in product(choices, included))
+    return included|later_included
 
 
 summer_rasps = set(data_api.get_rasps_by_season(summer = True))
@@ -61,7 +61,7 @@ for semester in summer_semesters:
     has_optional_subjects = semester.hasOptionalSubjects
 
     filtered_subjects = list(filter(lambda s: sem_id in s.semesterIds, subjects))
-    q = dohvati_nastove(filtered_subjects, izbornih=has_optional_subjects)
+    q = get_nasts(filtered_subjects, optionals=has_optional_subjects)
 
     if q is None:
         q = frozenset(frozenset())
