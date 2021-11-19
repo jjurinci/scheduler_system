@@ -1,5 +1,4 @@
 from collections import defaultdict
-from operator import itemgetter
 from tqdm import tqdm
 import random
 import numpy as np
@@ -8,24 +7,26 @@ from itertools import product
 
 
 class Optimizer:
-    def __init__(self, raspovi, nastovi, fixed, free_terms, professor_available, classroom_available, computer_rooms, room_capacity, students):
-        self.rasps = raspovi
-        self.nasts = nastovi
-        self.fixed = fixed
-        self.professor_available = dict(**professor_available)
-        self.students = students
-        self.free_terms = free_terms
+    #def __init__(self, rasps, nasts, fixed, free_terms, professor_occupied, computer_rooms, room_capacity, students):
+    def __init__(self, data):
+        self.rasps = data["rasps"]
+        self.nasts = data["nasts"]
+        self.fixed = data["fixed"]
+        self.free_terms = data["free_terms"]
+        self.classroom_occupied = dict(**data["classroom_occupied"])
+        self.professor_occupied = dict(**data["professor_occupied"])
+        self.computer_rooms = data["computer_rooms"]
+        self.room_capacity = data["room_capacity"]
+        self.students = data["students_estimate"]
 
-        self.computer_rooms = computer_rooms
-        self.room_capacity = room_capacity
+        #occupied = defaultdict(lambda: np.zeros(shape=(5,16), dtype=np.int32))
+        #for room, day, hour in self.free_terms:
+        #    occupied[room][day,hour] = 1
 
-        occupied = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
-        for room, day, hour in free_terms:
-            occupied[room][day,hour] = 0
+        #for rasp, (room, day, hour) in self.fixed.items():
+        #    occupied[room][day, hour:(hour+rasp.duration)] = 0
+        #self.occupied = dict(**occupied)
 
-        for rasp, (room, day, hour) in self.fixed.items():
-            occupied[room][day, hour:(hour+rasp.duration)] = 0
-        self.occupied = dict(**occupied)
 
     def initialize_random_sample(self, N):
         sample = []
@@ -48,6 +49,7 @@ class Optimizer:
         sample = sample[:N]
         return sample
 
+
     def initialize_from_single_timetable(self, sample0, N):
         sample = [(self.grade(sample0), sample0)]
         for _ in tqdm(range(10*N)):
@@ -59,16 +61,15 @@ class Optimizer:
 
 
     def grade(self, timetable, verbose=False):
-        room_taken = {k:v.copy() for k,v in self.occupied.items()}
-        if verbose:
-            initial_room_taken = {k:v.copy() for k,v in self.occupied.items()}
+        room_taken = {k:v.copy() for k,v in self.classroom_occupied.items()}
+        prof_taken = {k:v.copy() for k,v in self.professor_occupied.items()}
 
-        prof_taken = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
-        prof_taken.update({k:v.copy() for k,v in self.professor_available.items()})
+        if verbose:
+            initial_room_taken = {k:v.copy() for k,v in self.classroom_occupied.items()}
 
         for rasp, (room, day, hour) in timetable.items():
             room_taken[room][day, hour:(hour + rasp.duration)] += 1
-            prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)] -= 1
+            prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)] += 1
 
         total_score = 0
         total_room_score, total_professor_score = 0, 0
@@ -87,7 +88,7 @@ class Optimizer:
             total_score -= score_rooms
 
             # Professor collisions
-            cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]<0)
+            cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
             score_professors = cnt * self.students[rasp]
             if verbose and score_professors:
                 print(f"Professor collision ({rasp.professorId}): {score_professors}")
