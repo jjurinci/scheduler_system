@@ -3,6 +3,7 @@ from collections import Counter, defaultdict
 from itertools import product
 import numpy as np
 import pandas as pd
+import pickle
 
 import data_api
 from my_types import Subject
@@ -187,9 +188,13 @@ for semester, the_nasts in nasts.items():
         margin = {rasp: stud_per_nast for rasp in nast}
         students_estimate.update(margin)
 
-FIXED = {}
 computer_rooms = set(room.id for room in classrooms if room.hasComputers)
 room_capacity = {room.id : room.capacity for room in classrooms}
+
+FIXED = {}
+#for rasp in summer_rasps:
+#    room_id, day, hour = rasp.fixedAt.split(",")
+#    FIXED[rasp] = (room_id, day, hour)
 
 data = {
         "rasps": summer_rasps,
@@ -206,6 +211,9 @@ data = {
 OPT = Optimizer(data)
 sample = OPT.initialize_random_sample(10)
 start = pd.Series([s[0]["totalScore"] for s in sample]).describe()
-sample = OPT.iterate(sample, 100, population_cap = 10)
+sample = OPT.iterate(sample, 100, population_cap = 512)
 end = pd.Series([s[0]["totalScore"] for s in sample]).describe()
 print(start, end, start-end)
+
+with open("saved_timetable.pickle", "wb") as f:
+    pickle.dump(sample, f)

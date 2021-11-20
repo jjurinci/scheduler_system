@@ -1,4 +1,3 @@
-from collections import defaultdict
 from tqdm import tqdm
 import random
 import numpy as np
@@ -7,7 +6,6 @@ from itertools import product
 
 
 class Optimizer:
-    #def __init__(self, rasps, nasts, fixed, free_terms, professor_occupied, computer_rooms, room_capacity, students):
     def __init__(self, data):
         self.rasps = data["rasps"]
         self.nasts = data["nasts"]
@@ -18,10 +16,6 @@ class Optimizer:
         self.computer_rooms = data["computer_rooms"]
         self.room_capacity = data["room_capacity"]
         self.students = data["students_estimate"]
-
-        #occupied = defaultdict(lambda: np.zeros(shape=(5,16), dtype=np.int32))
-        #for room, day, hour in self.free_terms:
-        #    occupied[room][day,hour] = 1
 
         #for rasp, (room, day, hour) in self.fixed.items():
         #    occupied[room][day, hour:(hour+rasp.duration)] = 0
@@ -191,23 +185,28 @@ class Optimizer:
         BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
         print(starting_generation-1, BEST_SAMPLE[0])
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
+            try:
+                with Pool(7) as p:
+                    the_samples = [s[1] for s in sample]
 
-            with Pool(7) as p:
-                the_samples = [s[1] for s in sample]
+                    mutations = p.map(self.mutate_and_grade, the_samples)
 
-                mutations = p.map(self.mutate_and_grade, the_samples)
+                    size = len(the_samples) if 10 > len(the_samples) else 10
+                    cross1 = random.sample(the_samples, size)
+                    cross2 = random.sample(the_samples, size)
+                    crossover_pairs = [(t1, t2) for t1, t2 in product(cross1, cross2)]
+                    crossovers = p.map(self.cross_and_grade, crossover_pairs)
 
-                size = len(the_samples) if 10 > len(the_samples) else 10
-                cross1 = random.sample(the_samples, size)
-                cross2 = random.sample(the_samples, size)
-                crossover_pairs = [(t1, t2) for t1, t2 in product(cross1, cross2)]
-                crossovers = p.map(self.cross_and_grade, crossover_pairs)
+                sample += mutations+crossovers
+                sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
+                sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
+                sample = sample[0:population_cap]
+                if sample[0][0]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
+                    BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+                    tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
 
-            sample += mutations+crossovers
-            sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
-            sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
-            sample = sample[0:population_cap]
-            if sample[0][0]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
-                BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
-                tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
+            except KeyboardInterrupt:
+                print("EXITING")
+                return sample
+
         return sample

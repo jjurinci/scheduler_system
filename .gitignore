@@ -2,3 +2,4 @@ __pycache__/
 rasp_env/
 data/
 constraints/
+*.pickle
