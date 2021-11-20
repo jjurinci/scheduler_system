@@ -192,9 +192,13 @@ computer_rooms = set(room.id for room in classrooms if room.hasComputers)
 room_capacity = {room.id : room.capacity for room in classrooms}
 
 FIXED = {}
-#for rasp in summer_rasps:
-#    room_id, day, hour = rasp.fixedAt.split(",")
-#    FIXED[rasp] = (room_id, day, hour)
+for rasp in summer_rasps:
+    if not rasp.fixedAt:
+        continue
+    room_id, day, hour = rasp.fixedAt.split(",")
+    day, hour = int(day)-1, int(hour)-1
+    FIXED[rasp] = (room_id, day, hour)
+    classroom_occupied[room_id][day, hour:(hour+rasp.duration)] += 1
 
 data = {
         "rasps": summer_rasps,
@@ -207,6 +211,8 @@ data = {
         "room_capacity": room_capacity,
         "students_estimate": students_estimate
 }
+print(sorted(FIXED))
+quit()
 
 OPT = Optimizer(data)
 sample = OPT.initialize_random_sample(10)

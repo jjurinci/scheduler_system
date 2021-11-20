@@ -17,10 +17,6 @@ class Optimizer:
         self.room_capacity = data["room_capacity"]
         self.students = data["students_estimate"]
 
-        #for rasp, (room, day, hour) in self.fixed.items():
-        #    occupied[room][day, hour:(hour+rasp.duration)] = 0
-        #self.occupied = dict(**occupied)
-
 
     def initialize_random_sample(self, N):
         sample = []

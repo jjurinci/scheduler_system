@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-Rasp = namedtuple('Rasp', ['id', 'subjectId', 'professorId','type', 'group', 'duration', 'mandatory', 'needsComputers', 'totalGroups', 'color', 'fixed', 'fixedAt', 'userId'])
+Rasp = namedtuple('Rasp', ['id', 'subjectId', 'professorId','type', 'group', 'duration', 'mandatory', 'needsComputers', 'totalGroups', 'color', 'fixedAt', 'userId'])
 Subject = namedtuple('Subject', ['id', 'name', 'mandatory', 'semesterIds','userId', 'rasps'])
 
 Faculty = namedtuple('Faculty', ['id', 'name', 'userId'])
