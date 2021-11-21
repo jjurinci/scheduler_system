@@ -4,7 +4,6 @@ import numpy as np
 from multiprocessing import Pool
 from itertools import product
 
-
 class Optimizer:
     def __init__(self, data):
         self.rasps = data["rasps"]
@@ -180,6 +179,7 @@ class Optimizer:
     def iterate(self, sample, generations=100, starting_generation=1, population_cap=512):
         BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
         print(starting_generation-1, BEST_SAMPLE[0])
+
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
             try:
                 with Pool(7) as p:
