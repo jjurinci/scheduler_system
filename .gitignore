@@ -2,6 +2,7 @@ __pycache__/
 rasp_env/
 data/
 constraints/
+visual_timetables/
 *.pickle
 *.txt
 test.py

@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 
+#TODO: Check if there is enough time allowed -> Prof for all their rasps and rooms for all rasps (take computer into account)
+
 def get_professor_ids():
     path = "../data/csvs/professors.csv"
     with open(path) as csv_file:
