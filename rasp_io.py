@@ -215,7 +215,7 @@ data = {
 OPT = Optimizer(data)
 sample = OPT.initialize_random_sample(10)
 start = pd.Series([s[0]["totalScore"] for s in sample]).describe()
-sample = OPT.iterate(sample, 100, population_cap = 10)
+sample = OPT.iterate(sample, 5000, population_cap = 10)
 end = pd.Series([s[0]["totalScore"] for s in sample]).describe()
 print(start, end, start-end)
 

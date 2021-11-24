@@ -90,9 +90,14 @@ def is_float(number: str):
     except ValueError:
         return False
 
+# Problem if "1.0" is passed as value
 def is_positive_integer(value: str, include_zero = False):
     try:
-        num = int(value)
+        float_num = float(value)
+        if not float_num.is_integer():
+            return False
+
+        num = int(float_num)
 
         if not include_zero:
             return True if num > 0 else False
@@ -246,7 +251,7 @@ def analyze_classrooms():
     for index, row in classrooms.iterrows():
         if not row.id or \
            not row["name"] or \
-           not is_valid_number(row.capacity) or \
+           not is_positive_integer(row.capacity) or \
            not is_zero_or_one(row.hasComputers):
                improper_format = True
 
@@ -254,8 +259,8 @@ def analyze_classrooms():
             print(f"ERROR: In classrooms.csv -> Row {index} has \"id\" of NULL.")
         if not row["name"]:
             print(f"ERROR: In classrooms.csv -> Row {index} has \"hasComputers\" of NULL.")
-        if not is_valid_number(row.capacity):
-            print(f"ERROR: In classrooms.csv -> In Row {index} \"capacity\" is not a valid number.")
+        if not is_positive_integer(row.capacity):
+            print(f"ERROR: In classrooms.csv -> In Row {index} \"capacity\" is not a positive integer.")
         if not is_zero_or_one(row.hasComputers):
             print(f"ERROR: In classrooms.csv -> In Row {index} \"hasComputers\" is not \"0\" or \"1\".")
 
@@ -412,7 +417,7 @@ def analyze_semesters():
            not is_valid_season(row.season) or \
            not is_positive_integer(row.numSemester) or \
            not is_positive_integer(row.hasOptionalSubjects, include_zero=True) or \
-           not is_valid_number(row.numStudents) or \
+           not is_positive_integer(row.numStudents) or \
            not row.facultyId in faculty_ids:
                improper_format = True
 
@@ -422,12 +427,12 @@ def analyze_semesters():
             print(f"ERROR: In semesters.csv -> Row {index} has \"name\" of NULL.")
         if not is_valid_season(row.season):
             print(f"ERROR: In semesters.csv -> In Row {index} \"season\" is not \"W\" or \"S\".")
-        if not is_valid_number(row.numSemester):
-            print(f"ERROR: In semesters.csv -> In Row {index} \"numSemester\" is not a valid number.")
+        if not is_positive_integer(row.numSemester):
+            print(f"ERROR: In semesters.csv -> In Row {index} \"numSemester\" is not a positive integer.")
         if not is_positive_integer(row.hasOptionalSubjects, include_zero=True):
             print(f"ERROR: In semesters.csv -> In Row {index} \"hasOptionalSubjects\" is not a positive integer.")
-        if not is_valid_number(row.numStudents):
-            print(f"ERROR: In semesters.csv -> In Row {index} \"numStudents\" is not a valid number.")
+        if not is_positive_integer(row.numStudents):
+            print(f"ERROR: In semesters.csv -> In Row {index} \"numStudents\" is not a positive integer.")
         if not row.facultyId in faculty_ids:
             print(f"ERROR: In semesters.csv -> In Row {index} foreign key \"facultyId\" with value '{row.facultyId}' doesn't exist as \"id\" in faculties.")
 

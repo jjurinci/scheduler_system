@@ -139,6 +139,7 @@ class Optimizer:
 
         return final_score
 
+
     def mutate(self, timetable):
         new_timetable = timetable.copy()
         nonassigned = self.rasps - set(self.fixed.keys())
@@ -166,6 +167,83 @@ class Optimizer:
                 for rasp in timetable1}
 
 
+    def swap(self, timetable):
+        new_timetable = timetable.copy()
+        nonassigned = self.rasps - set(self.fixed.keys())
+        rasp1 = random.choice(list(nonassigned))
+        rasp2 = random.choice(list(nonassigned))
+
+        temp = new_timetable[rasp1]
+        new_timetable[rasp1] = new_timetable[rasp2]
+        new_timetable[rasp2] = temp
+        return new_timetable
+
+
+    def fix_problematic(self, timetable):
+        problematic_rasps = []
+        prof_taken = {k:v.copy() for k,v in self.professor_occupied.items()}
+        room_taken = {k:v.copy() for k,v in self.classroom_occupied.items()}
+
+        for rasp, (room, day, hour) in timetable.items():
+            room_taken[room][day, hour:(hour + rasp.duration)] += 1
+            prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)] += 1
+
+        # Find problematic rasps
+        for rasp, (room, day, hour) in timetable.items():
+            room_problem = sum(room_taken[room][day, hour:(hour + rasp.duration)]>1)
+            prof_problem = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
+            capacity_problem = bool(self.students[rasp] - self.room_capacity[room]>=0)
+            computer_problem1 = not room in self.computer_rooms and rasp.needsComputers
+            computer_problem2 = room in self.computer_rooms and not rasp.needsComputers
+
+            if room_problem or prof_problem or capacity_problem or computer_problem1 or computer_problem2:
+                problematic_rasps.append(rasp)
+
+        new_timetable = timetable.copy()
+        if not problematic_rasps:
+            return new_timetable
+
+        # Choose a random problematic rasp
+        rasp0 = random.choice(problematic_rasps)
+
+        # Check if there is a new free term for it
+        avs = self.free_terms.copy()
+        for rasp, (room, day, hour) in new_timetable.items():
+            terms = {(room, day, hour+i) for i in range(rasp.duration)}
+            avs -= terms
+
+        nonavs = set()
+        for (room, day, hour) in avs:
+            if any((room, day, hour+i) not in avs for i in range(1,rasp0.duration)):
+                nonavs.add((room, day, hour))
+
+        avs -= nonavs
+
+        # If there is a new free term, try it
+        if avs:
+            slot = random.choice(list(avs))
+            new_timetable[rasp0] = slot
+            return new_timetable
+
+
+        # Otherwise, find with which other rasps it could potentially swap terms
+        potential_swaps = []
+        for rasp, (room, day, hour) in new_timetable.items():
+            if all((room, day, hour+i) for i in range(1, rasp0.duration)) in self.free_terms:
+                potential_swaps.append(rasp)
+
+        if not potential_swaps:
+            return new_timetable
+
+        # If there are potential swaps, try a random one
+        rasp1 = random.choice(potential_swaps)
+        temp = new_timetable[rasp0]
+        new_timetable[rasp0] = new_timetable[rasp1]
+        new_timetable[rasp1] = temp
+
+        return new_timetable
+
+
     def cross_and_grade(self, two_timetables):
         one_timetable = self.crossover(two_timetables[0], two_timetables[1])
         return self.grade(one_timetable), one_timetable
@@ -173,6 +251,16 @@ class Optimizer:
 
     def mutate_and_grade(self, timetable):
         timetable = self.mutate(timetable)
+        return self.grade(timetable), timetable
+
+
+    def swap_and_grade(self, timetable):
+        timetable = self.swap(timetable)
+        return self.grade(timetable), timetable
+
+
+    def prob_and_grade(self, timetable):
+        timetable =self.fix_problematic(timetable)
         return self.grade(timetable), timetable
 
 
@@ -186,14 +274,16 @@ class Optimizer:
                     the_samples = [s[1] for s in sample]
 
                     mutations = p.map(self.mutate_and_grade, the_samples)
+                    swaps = p.map(self.swap_and_grade, the_samples)
+                    probs = p.map(self.prob_and_grade, the_samples)
 
-                    size = len(the_samples) if 10 > len(the_samples) else 10
-                    cross1 = random.sample(the_samples, size)
-                    cross2 = random.sample(the_samples, size)
-                    crossover_pairs = [(t1, t2) for t1, t2 in product(cross1, cross2)]
-                    crossovers = p.map(self.cross_and_grade, crossover_pairs)
+                    #size = len(the_samples) if 11 > len(the_samples) else 10
+                    #cross1 = random.sample(the_samples, size)
+                    #cross2 = random.sample(the_samples, size)
+                    #crossover_pairs = [(t1, t2) for t1, t2 in product(cross1, cross2)]
+                    #crossovers = p.map(self.cross_and_grade, crossover_pairs)
 
-                sample += mutations+crossovers
+                sample += probs + mutations + swaps #+crossovers
                 sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
                 sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
                 sample = sample[0:population_cap]
