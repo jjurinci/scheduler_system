@@ -9,7 +9,7 @@ from tabulate import tabulate
 
 
 def load_timetables():
-    name = "timetable_to_analyze2.pickle"
+    name = "timetable_to_analyze.pickle"
     with open(name, "rb") as f:
         timetables = pickle.load(f)
     return timetables
@@ -55,6 +55,9 @@ def analyze_timetable():
     professor_problems, classroom_problems, capacity_problems,  = [], [], []
     computer_srs_problems, computer_weak_problems, nast_problems = [], [], []
     for rasp, (room, day, hour) in timetable.items():
+        m = "*" if not rasp.mandatory else ""
+        f = " [fixed]" if rasp.fixedAt else ""
+
         good_day = day_to_str(day)
         good_hour = hour + 1
 
@@ -67,7 +70,7 @@ def analyze_timetable():
                 problematic_hours.append(hour+i+1) #+1 to get range [1-16] instead of [0-15]
 
         if problematic_hours:
-            classroom_problems.append((score_rooms, [f"{score_rooms}", f"{rasp.subjectId}", f"{room}", f"{good_day}", f"{problematic_hours}"]))
+            classroom_problems.append((score_rooms, [f"{score_rooms}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{problematic_hours}"]))
 
         # Professor collisions
         cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
@@ -78,22 +81,22 @@ def analyze_timetable():
                 problematic_hours.append(hour+i+1)
 
         if problematic_hours:
-            professor_problems.append((score_professors, [f"{score_professors}", f"{rasp.subjectId}", f"{rasp.professorId}", f"{good_day}", f"{problematic_hours}"]))
+            professor_problems.append((score_professors, [f"{score_professors}", f"{m}{rasp.subjectId}{f}", f"{rasp.professorId}", f"{good_day}", f"{problematic_hours}"]))
 
         # Insufficient room capacity
         capacity = bool(students_estimate[rasp] - room_capacity[room]>=0)
         score_capacity = round(- capacity * rasp.duration * students_estimate[rasp], 2)
         if score_capacity != 0:
-            capacity_problems.append((score_capacity, [f"{score_capacity}", f"{rasp.subjectId}", f"{room}", f"{good_day}", f"{good_hour}"]))
+            capacity_problems.append((score_capacity, [f"{score_capacity}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
         # Computer room & computer rasp collisions
         if not room in computer_rooms and rasp.needsComputers:
             score_computers = round(- students_estimate[rasp], 2)
-            computer_srs_problems.append((score_computers, [f"{score_computers}", f"{rasp.subjectId}", f"{room}", f"{good_day}", f"{good_hour}"]))
+            computer_srs_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
         if room in computer_rooms and not rasp.needsComputers:
             score_computers = round(- students_estimate[rasp] * 0.1, 2)
-            computer_weak_problems.append((score_computers, [f"{score_computers}", f"{rasp.subjectId}", f"{room}", f"{good_day}", f"{good_hour}"]))
+            computer_weak_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
     # Nast collisions
     for semester, the_nasts in nasts.items():
@@ -114,8 +117,10 @@ def analyze_timetable():
                     if nast_taken[day, (hour + i)] > 1:
                         problematic_hours.append(hour+1)
 
+                m = "*" if not rasp.mandatory else ""
+                f = " [fixed]" if rasp.fixedAt else ""
                 if problematic_hours:
-                    nast_problems.append((score_nast, [f"{score_nast}", f"{rasp.subjectId}", f"{semester}", f"{good_day}", f"{problematic_hours}"]))
+                    nast_problems.append((score_nast, [f"{score_nast}", f"{m}{rasp.subjectId}{f}", f"{semester}", f"{good_day}", f"{problematic_hours}"]))
 
     classroom_problems.sort(key = lambda x: x[0])
     professor_problems.sort(key = lambda x: x[0])
