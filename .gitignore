@@ -3,3 +3,5 @@ rasp_env/
 data/
 constraints/
 *.pickle
+*.txt
+test.py

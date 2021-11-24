@@ -229,7 +229,7 @@ class Optimizer:
         # Otherwise, find with which other rasps it could potentially swap terms
         potential_swaps = []
         for rasp, (room, day, hour) in new_timetable.items():
-            if all((room, day, hour+i) for i in range(1, rasp0.duration)) in self.free_terms:
+            if all((room, day, hour+i) in self.free_terms for i in range(rasp0.duration)):
                 potential_swaps.append(rasp)
 
         if not potential_swaps:
@@ -273,17 +273,20 @@ class Optimizer:
                 with Pool(7) as p:
                     the_samples = [s[1] for s in sample]
 
-                    mutations = p.map(self.mutate_and_grade, the_samples)
-                    swaps = p.map(self.swap_and_grade, the_samples)
-                    probs = p.map(self.prob_and_grade, the_samples)
+                    mutations = p.map_async(self.mutate_and_grade, the_samples)
+                    swaps = p.map_async(self.swap_and_grade, the_samples)
+                    probs = p.map_async(self.prob_and_grade, the_samples)
 
                     #size = len(the_samples) if 11 > len(the_samples) else 10
                     #cross1 = random.sample(the_samples, size)
                     #cross2 = random.sample(the_samples, size)
                     #crossover_pairs = [(t1, t2) for t1, t2 in product(cross1, cross2)]
                     #crossovers = p.map(self.cross_and_grade, crossover_pairs)
+                    mutations.wait()
+                    swaps.wait()
+                    probs.wait()
 
-                sample += probs + mutations + swaps #+crossovers
+                sample += probs.get() + mutations.get() + swaps.get() #+crossovers
                 sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
                 sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
                 sample = sample[0:population_cap]
