@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from collections import defaultdict
 
 #TODO: Check if there is enough time allowed -> Prof for all their rasps and rooms for all rasps (take computer into account)
 
@@ -15,7 +16,7 @@ def get_professor_ids():
     return set(professors.id)
 
 
-def get_classroom_ids():
+def get_classrooms():
     path = "../data/csvs/classrooms.csv"
     with open(path) as csv_file:
         classrooms = pd.read_csv(csv_file,
@@ -24,7 +25,161 @@ def get_classroom_ids():
 
         classrooms = pd.DataFrame(classrooms).astype("str")
 
-    return set(classrooms.id)
+    return classrooms
+
+
+def get_rasps():
+    path_sem = "../data/csvs/semesters.csv"
+    with open(path_sem) as csv_file:
+        semesters = pd.read_csv(csv_file,
+                                delimiter=",",
+                                usecols=[0,1,2,3,4,5,6,7],
+                                on_bad_lines='error')
+        semesters = pd.DataFrame(semesters).fillna("").astype("str")
+
+    path_sub = "../data/csvs/subjects.csv"
+    with open(path_sub) as csv_file:
+        subjects = pd.read_csv(csv_file,
+                               delimiter=",",
+                               usecols=[0,1,2,3,4],
+                               on_bad_lines='error')
+        subjects = pd.DataFrame(subjects).fillna("").astype("str")
+
+    path_rasps = "../data/csvs/rasps.csv"
+    with open(path_rasps) as csv_file:
+        rasps = pd.read_csv(csv_file,
+                            delimiter=",",
+                            usecols=[0,1,2,3,4,5,6,7,8,9,10,11],
+                            on_bad_lines='error')
+        rasps = pd.DataFrame(rasps).fillna("").astype("str")
+        rasps.index += 1
+
+    sem_students = defaultdict(lambda: 0.0)
+    sem_season = defaultdict(lambda: "W")
+    for _, sem in semesters.iterrows():
+        sem_students[sem.id] = int(sem.numStudents)
+        sem_season[sem.id] = sem.season
+
+    sem_num_optionals = defaultdict(lambda: 0.0)
+    sub_season = defaultdict(lambda: "W")
+    for _, subject in subjects.iterrows():
+        if subject.mandatory == "0":
+            for sem_id in subject.semesterIds.split(","):
+                sem_num_optionals[sem_id] += 1
+
+        for sem_id in subject.semesterIds.split(","):
+            sub_season[subject.id] = sem_season[sem_id]
+
+    sub_students = defaultdict(lambda: 0.0)
+    for _, subject in subjects.iterrows():
+        for sem_id in subject.semesterIds.split(","):
+            if subject.mandatory == "1":
+                sub_students[subject.id] += sem_students[sem_id]
+            elif subject.mandatory == "0":
+                sub_students[subject.id] += (sem_students[sem_id] / sem_num_optionals[sem_id])
+
+    for index, rasp in rasps.iterrows():
+        rasps.at[index, "numStudents"] = sub_students[rasp.subjectId] // int(rasp.totalGroups)
+        rasps.at[index, "season"] = sub_season[rasp.subjectId]
+
+    winter_rasps = rasps[rasps['season'] == 'W']
+    summer_rasps = rasps[rasps['season'] == 'S']
+
+    return winter_rasps, summer_rasps
+
+
+def get_professor_rasps_duration(rasps, professor_id):
+    duration = 0
+    for _, row in rasps.iterrows():
+        if row.professorId == professor_id:
+            duration += int(row.duration)
+    return duration
+
+
+def get_free_time(row):
+    keys = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+
+    free_time = 0
+    for key in keys:
+        if row[key] == "F":
+            continue
+        elif row[key] == "T":
+            free_time += 16
+        else:
+            times = row[key].split(",")
+            for i in range(0, len(times), 2):
+                start, end = int(times[i]), int(times[i+1])
+                free_time += (end - start + 1)
+    return free_time
+
+
+def check_capacity_free_time(rasps, classrooms, room_available):
+    pc_rasps =   [rasp for _, rasp in rasps.iterrows() if rasp.needsComputers == "1"]
+    nopc_rasps = [rasp for _, rasp in rasps.iterrows() if rasp.needsComputers == "0"]
+
+    pc_rooms =   [room for _, room in classrooms.iterrows() if room.hasComputers == "1"]
+    nopc_rooms = [room for _, room in classrooms.iterrows() if room.hasComputers == "0"]
+
+    constrained_room_ids = {room.classroomId for _, room in room_available.iterrows()}
+    constrained_rooms = {room.classroomId : room for _, room in room_available.iterrows()}
+
+    pc_rooms_formatted = []
+    for room in pc_rooms:
+        free_time = 5 * 16
+        if room.id in constrained_room_ids:
+            free_time = get_free_time(constrained_rooms[room.id])
+
+        form_room = {"capacity": int(room.capacity), "free_time": free_time, "room_id": room.id}
+        pc_rooms_formatted.append(form_room)
+
+    nopc_rooms_formatted = []
+    for room in nopc_rooms:
+        free_time = 5 * 16
+        if room.id in constrained_room_ids:
+            free_time = get_free_time(constrained_rooms[room.id])
+
+        form_room = {"capacity": int(room.capacity), "free_time": free_time, "room_id": room.id}
+        nopc_rooms_formatted.append(form_room)
+
+    pc_rooms_formatted.sort(key=lambda x: x["capacity"])
+    nopc_rooms_formatted.sort(key=lambda x: x["capacity"])
+
+    problems = False
+    for rasp in pc_rasps:
+        can_fit_rasp = False
+        for room in pc_rooms_formatted:
+            if rasp.numStudents <= room["capacity"] and room["free_time"] >= int(rasp.duration):
+                room["free_time"] -= int(rasp.duration)
+                can_fit_rasp = True
+                break
+        if not can_fit_rasp:
+            problems = True
+            print(f"Cannot fit computer rasp {rasp.subjectId} {rasp.type} {rasp.group}")
+
+    for rasp in nopc_rasps:
+        can_fit_rasp = False
+        for room in nopc_rooms_formatted:
+            if rasp.numStudents <= room["capacity"] and room["free_time"] >= int(rasp.duration):
+                room["free_time"] -= int(rasp.duration)
+                can_fit_rasp = True
+                break
+
+        if not can_fit_rasp:
+            for room in pc_rooms_formatted:
+                if rasp.numStudents <= room["capacity"] and room["free_time"] >= int(rasp.duration):
+                    room["free_time"] -= int(rasp.duration)
+                    can_fit_rasp = True
+                    break
+
+        if not can_fit_rasp:
+            problems = True
+            print(f"Cannot fit non-computer rasp {rasp.subjectId} {rasp.type} {rasp.group}")
+
+    if problems:
+        return False
+
+    return True
+
 
 def is_positive_integer(value: str, include_zero = False):
     try:
@@ -117,7 +272,8 @@ def analyze_classroom_available():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
-    classroom_ids = get_classroom_ids()
+    classrooms = get_classrooms()
+    classroom_ids = {room.id for _, room in classrooms.iterrows()}
     improper_format = False
 
     for index, row in room_available.iterrows():
@@ -154,6 +310,17 @@ def analyze_classroom_available():
                 print(error)
 
     if improper_format:
+        return False
+
+    winter_rasps, summer_rasps = get_rasps()
+    winter_succeeded = check_capacity_free_time(winter_rasps, classrooms, room_available)
+    summer_succeeded = check_capacity_free_time(summer_rasps, classrooms, room_available)
+
+    if not winter_succeeded:
+        print("Winter rasps couldn't be scheduled with given classroom constraints (capacity, free time).")
+        return False
+    if not summer_succeeded:
+        print("Summer rasps couldn't be scheduled with given classroom constraints (capacity, free time).")
         return False
 
     return True
@@ -243,6 +410,24 @@ def analyze_professor_available():
                 print(error)
 
     if improper_format:
+        return False
+
+    winter_rasps, summer_rasps = get_rasps()
+    not_enough_free_time = False
+    for index, row in prof_available.iterrows():
+        prof_free_time = get_free_time(row)
+        prof_winter_rasp_duration = get_professor_rasps_duration(winter_rasps, row.professorId)
+        prof_summer_rasp_duration = get_professor_rasps_duration(summer_rasps, row.professorId)
+
+        if prof_winter_rasp_duration > prof_free_time:
+            not_enough_free_time = True
+            print(f"ERROR: In professor_available.csv -> In Row {index} '{row.professorId}' has total of '{prof_free_time}' units of free time but their total WINTER rasp duration is '{prof_winter_rasp_duration}' units of time.")
+
+        if prof_summer_rasp_duration > prof_free_time:
+            not_enough_free_time = True
+            print(f"ERROR: In professor_available.csv -> In Row {index} '{row.professorId}' has total of '{prof_free_time}' units of free time but their total SUMMER rasp duration is '{prof_summer_rasp_duration}' units of time.")
+
+    if not_enough_free_time:
         return False
 
     return True
