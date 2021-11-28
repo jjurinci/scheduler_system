@@ -1,5 +1,4 @@
 from rasptools import Optimizer
-import pandas as pd
 import pickle
 import data_api.classrooms as room_api
 import data_api.professors as prof_api

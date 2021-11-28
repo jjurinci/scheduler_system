@@ -1,4 +1,5 @@
 import random
+import signal
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
@@ -250,7 +251,10 @@ class Optimizer:
 
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
             try:
+                original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
                 with Pool(7) as p:
+                    signal.signal(signal.SIGINT, original_sigint_handler)
+
                     the_samples = [s[1] for s in sample]
 
                     mutations = p.map_async(self.mutate_and_grade, the_samples)
@@ -275,7 +279,6 @@ class Optimizer:
                     tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
 
             except KeyboardInterrupt:
-                print("EXITING")
                 return self.finalize_output(sample)
 
         return self.finalize_output(sample)
