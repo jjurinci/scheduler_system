@@ -79,6 +79,14 @@ def get_rooms_occupied(FREE_TERMS, rasps, FIXED):
     return rooms_occupied
 
 
+def get_room_by_id(room_id):
+    rooms = get_rooms()
+    for room in rooms:
+        if room_id == room.id:
+            return room
+    return -1
+
+
 def get_rooms_by_ids(room_ids):
     rooms = get_rooms()
     return [room for room in rooms if room.id in room_ids]

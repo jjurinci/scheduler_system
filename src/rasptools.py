@@ -295,8 +295,7 @@ class Optimizer:
 
             nasts_occupied = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
             for semester, the_nasts in self.nasts.items():
-                sem_id, num_semester, num_students = semester
-                nast_key = f"{sem_id},{num_semester},{num_students}"
+                sem_id, _, _, _ = semester
 
                 # this is different than in self.grade function!
                 seen_rasps = set()
@@ -309,7 +308,7 @@ class Optimizer:
                         seen_rasps.add(rasp.id)
                         _, day, hour = timetable[rasp]
                         nast_occupied[day, hour:(rasp.duration + hour)] += 1
-                nasts_occupied[nast_key] = nast_occupied
+                nasts_occupied[sem_id] = nast_occupied
 
             data = {"grade": grade,
                     "timetable": timetable,

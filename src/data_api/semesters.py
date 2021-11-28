@@ -76,7 +76,7 @@ def get_nasts_all_semesters(rasps, winter):
         if q is None:
             q = frozenset(frozenset())
 
-        nasts[(sem_name, num_semester, num_students)] = q
+        nasts[(sem_id, sem_name, num_semester, num_students)] = q
     return nasts
 
 
@@ -86,7 +86,7 @@ def get_students_per_rasp_estimate(nasts):
         if not the_nasts:
             continue
 
-        num_students = semester[2]
+        num_students = semester[3]
         stud_per_nast = num_students/len(the_nasts)
         for nast in the_nasts:
             margin = {rasp: stud_per_nast for rasp in nast}

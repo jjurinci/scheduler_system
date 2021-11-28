@@ -169,13 +169,12 @@ def analyze_per_semester():
     data = load_timetables()[0]
     nasts_occupied = data["nasts_occupied"]
 
-    for semester in nasts_occupied:
-        sem_id, num_semester, num_students = semester.split(",")
-        state = "[problem]" if (nasts_occupied[semester] > 1).any() else "[good]"
-        print(f"{sem_id} {num_semester} {num_students} {state}\n{nasts_occupied[semester]}\n")
+    for sem_id in nasts_occupied:
+        state = "[problem]" if (nasts_occupied[sem_id] > 1).any() else "[good]"
+        print(f"{sem_id} {state}\n{nasts_occupied[sem_id]}\n")
 
 
 analyze_timetable()
 #analyze_per_professor()
 #analyze_per_classroom()
-#analyze_per_semester()
+analyze_per_semester()
