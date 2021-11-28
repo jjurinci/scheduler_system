@@ -315,7 +315,8 @@ class Optimizer:
                     "season": self.season,
                     "rooms_occupied": rooms_occupied,
                     "professors_occupied": professors_occupied,
-                    "nasts_occupied": dict(**nasts_occupied)}
+                    "nasts_occupied": dict(**nasts_occupied),
+                    "students_estimate": self.students}
             output.append(data)
 
         return output
