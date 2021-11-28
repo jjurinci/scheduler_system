@@ -60,22 +60,22 @@ def constraints_csv_to_dict(path, name):
 
         return json_dict
 
-faculties  = csv_to_dict("data/faculties.csv",  "faculties")
-semesters  = csv_to_dict("data/semesters.csv",  "semesters")
-professors = csv_to_dict("data/professors.csv", "professors")
-classrooms = csv_to_dict("data/classrooms.csv", "classrooms")
-subjects   = csv_to_dict("data/subjects.csv",   "subjects")
-rasps      = csv_to_dict("data/rasps.csv",      "rasps")
+faculties  = csv_to_dict("database/input/csvs/faculties.csv",  "faculties")
+semesters  = csv_to_dict("database/input/csvs/semesters.csv",  "semesters")
+professors = csv_to_dict("database/input/csvs/professors.csv", "professors")
+classrooms = csv_to_dict("database/input/csvs/classrooms.csv", "classrooms")
+subjects   = csv_to_dict("database/input/csvs/subjects.csv",   "subjects")
+rasps      = csv_to_dict("database/input/csvs/rasps.csv",      "rasps")
 
-dict_to_json("data/faculties.json",  faculties)
-dict_to_json("data/semesters.json",  semesters)
-dict_to_json("data/professors.json", professors)
-dict_to_json("data/classrooms.json",  classrooms)
-dict_to_json("data/subjects.json",   subjects)
-dict_to_json("data/rasps.json",      rasps)
+dict_to_json("database/input/faculties.json",  faculties)
+dict_to_json("database/input/semesters.json",  semesters)
+dict_to_json("database/input/professors.json", professors)
+dict_to_json("database/input/classrooms.json",  classrooms)
+dict_to_json("database/input/subjects.json",   subjects)
+dict_to_json("database/input/rasps.json",      rasps)
 
-classroom_available = constraints_csv_to_dict("constraints/classroom_available.csv", "classroomAvailable")
-professor_available = constraints_csv_to_dict("constraints/professor_available.csv", "professorAvailable")
+classroom_available = constraints_csv_to_dict("database/constraints/csvs/classroom_available.csv", "classroomAvailable")
+professor_available = constraints_csv_to_dict("database/constraints/csvs/professor_available.csv", "professorAvailable")
 
-dict_to_json("constraints/classroom_available.json", classroom_available)
-dict_to_json("constraints/professor_available.json", professor_available)
+dict_to_json("database/constraints/classroom_available.json", classroom_available)
+dict_to_json("database/constraints/professor_available.json", professor_available)

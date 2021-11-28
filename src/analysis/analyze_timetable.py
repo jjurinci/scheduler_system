@@ -1,15 +1,13 @@
-from construct_data import summer_rasps, nasts, FIXED, \
-                           FREE_TERMS, professor_occupied, classroom_occupied, \
-                           computer_rooms, room_capacity, students_estimate
+import data_api.semesters  as seme_api
+import data_api.classrooms as room_api
 
 import pickle
 import numpy as np
 
 from tabulate import tabulate
 
-
 def load_timetables():
-    name = "timetable_to_analyze.pickle"
+    name = "saved_timetables/saved_timetable.pickle"
     with open(name, "rb") as f:
         timetables = pickle.load(f)
     return timetables
@@ -27,29 +25,21 @@ def day_to_str(day: int):
         return "friday"
 
 def analyze_timetable():
-    grade, timetable = load_timetables()[0]
+    data = load_timetables()[0]
+    timetable = data["timetable"]
+    rooms_occupied = data["rooms_occupied"]
+    professors_occupied = data["professors_occupied"]
+    season = data["season"]
 
-    # Which rasps have professor collisions? NEED: valid professor_constraints
-    ## I would like to know: (day, hour) of professorId collision AND scheduled rasp(s)->(roomId, day, hour)
+    room_ids = rooms_occupied.keys()
+    rooms = room_api.get_rooms_by_ids(room_ids)
+    computer_rooms = room_api.get_computer_rooms(rooms)
+    room_capacity = room_api.get_rooms_capacity(rooms)
 
-    # Which rasps have classrooms collisions? NEED: valid classroom_constraints
-
-    # Which rasps have classroom capacity problems? NEED: valid classrooms
-
-    # Which rasps have computer problems? NEED: valid classrooms
-
-    # Which rasps have nast collisions? NEED: valid nasts
-
-    ### Can do PER professor, PER classroom, PER capacity, PER nast, PER computer analysis
-    ### Can also do PER RASP analysis -> For every rasp say exactly the problems it has.
-
-    room_taken = {k:v.copy() for k,v in classroom_occupied.items()}
-    prof_taken = {k:v.copy() for k,v in professor_occupied.items()}
-
-    #Loading
-    for rasp, (room, day, hour) in timetable.items():
-        room_taken[room][day, hour:(hour + rasp.duration)] += 1
-        prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)] += 1
+    chosen_season = True if season == "W" else False
+    rasps = timetable.keys()
+    nasts = seme_api.get_nasts_all_semesters(rasps, winter = chosen_season)
+    students_estimate = seme_api.get_students_per_rasp_estimate(nasts)
 
     # PER RASP
     professor_problems, classroom_problems, capacity_problems,  = [], [], []
@@ -62,42 +52,44 @@ def analyze_timetable():
         good_hour = hour + 1
 
         # Room collisions
-        cnt = sum(room_taken[room][day, hour:(hour + rasp.duration)]>1)
+        cnt = sum(rooms_occupied[room][day, hour:(hour + rasp.duration)]>1)
         score_rooms = round(- cnt * students_estimate[rasp], 2)
         problematic_hours = []
         for i in range(rasp.duration):
-            if room_taken[room][day, hour+i] > 1:
+            if rooms_occupied[room][day, hour+i] > 1:
                 problematic_hours.append(hour+i+1) #+1 to get range [1-16] instead of [0-15]
 
         if problematic_hours:
-            classroom_problems.append((score_rooms, [f"{score_rooms}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{problematic_hours}"]))
+            classroom_problems.append((score_rooms, [f"{score_rooms}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{problematic_hours}"]))
 
         # Professor collisions
-        cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
+        cnt = sum(professors_occupied[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
         score_professors = round(- cnt * students_estimate[rasp], 2)
         problematic_hours = []
         for i in range(rasp.duration):
-            if prof_taken[rasp.professorId][day, hour+i] > 1:
+            if professors_occupied[rasp.professorId][day, hour+i] > 1:
                 problematic_hours.append(hour+i+1)
 
         if problematic_hours:
-            professor_problems.append((score_professors, [f"{score_professors}", f"{m}{rasp.subjectId}{f}", f"{rasp.professorId}", f"{good_day}", f"{problematic_hours}"]))
+            professor_problems.append((score_professors, [f"{score_professors}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{rasp.professorId}", f"{good_day}", f"{problematic_hours}"]))
 
         # Insufficient room capacity
         capacity = bool(students_estimate[rasp] - room_capacity[room]>=0)
         score_capacity = round(- capacity * rasp.duration * students_estimate[rasp], 2)
         if score_capacity != 0:
-            capacity_problems.append((score_capacity, [f"{score_capacity}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
+            capacity_problems.append((score_capacity, [f"{score_capacity}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
         # Computer room & computer rasp collisions
         if not room in computer_rooms and rasp.needsComputers:
             score_computers = round(- students_estimate[rasp], 2)
-            computer_srs_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
+            computer_srs_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
         if room in computer_rooms and not rasp.needsComputers:
             score_computers = round(- students_estimate[rasp] * 0.1, 2)
-            computer_weak_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
+            computer_weak_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
+    chosen_season = True if season == "W" else False
+    nasts = seme_api.get_nasts_all_semesters(rasps, winter = chosen_season)
     # Nast collisions
     for semester, the_nasts in nasts.items():
         score_nasts = 0
@@ -120,7 +112,7 @@ def analyze_timetable():
                 m = "*" if not rasp.mandatory else ""
                 f = " [fixed]" if rasp.fixedAt else ""
                 if problematic_hours:
-                    nast_problems.append((score_nast, [f"{score_nast}", f"{m}{rasp.subjectId}{f}", f"{semester}", f"{good_day}", f"{problematic_hours}"]))
+                    nast_problems.append((score_nast, [f"{score_nast}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{semester}", f"{good_day}", f"{problematic_hours}"]))
 
     classroom_problems.sort(key = lambda x: x[0])
     professor_problems.sort(key = lambda x: x[0])
@@ -155,4 +147,35 @@ def analyze_timetable():
     print(tabulate(nast_problems, headers=['Score', 'Rasp', 'semester', 'day', 'hours'], numalign="left", stralign="left", tablefmt='fancy_grid'))
 
 
+def analyze_per_professor():
+    data = load_timetables()[0]
+    professors_occupied = data["professors_occupied"]
+
+    for profId in professors_occupied:
+        state = "[problem]" if (professors_occupied[profId] > 1).any() else "[good]"
+        print(f"{profId} {state}\n{professors_occupied[profId]}\n")
+
+
+def analyze_per_classroom():
+    data = load_timetables()[0]
+    rooms_occupied = data["rooms_occupied"]
+
+    for roomId in rooms_occupied:
+        state = "[problem]" if (rooms_occupied[roomId] > 1).any() else "[good]"
+        print(f"{roomId} {state}\n{rooms_occupied[roomId]}\n")
+
+
+def analyze_per_semester():
+    data = load_timetables()[0]
+    nasts_occupied = data["nasts_occupied"]
+
+    for semester in nasts_occupied:
+        sem_id, num_semester, num_students = semester.split(",")
+        state = "[problem]" if (nasts_occupied[semester] > 1).any() else "[good]"
+        print(f"{sem_id} {num_semester} {num_students} {state}\n{nasts_occupied[semester]}\n")
+
+
 analyze_timetable()
+#analyze_per_professor()
+#analyze_per_classroom()
+#analyze_per_semester()

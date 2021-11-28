@@ -1,8 +1,7 @@
 __pycache__/
 rasp_env/
-data/
-constraints/
+database/
 visual_timetables/
+saved_timetables/
 *.pickle
 *.txt
-test.py

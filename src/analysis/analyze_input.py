@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 def get_faculty_ids():
-    path = "../data/csvs/faculties.csv"
+    path = "database/input/csvs/faculties.csv"
     with open(path) as csv_file:
         faculties = pd.read_csv(csv_file,
                                 delimiter=",",
@@ -13,7 +13,7 @@ def get_faculty_ids():
     return set(faculties.id)
 
 def get_semester_ids():
-    path = "../data/csvs/semesters.csv"
+    path = "database/input/csvs/semesters.csv"
     with open(path) as csv_file:
         semesters = pd.read_csv(csv_file,
                                 delimiter=",",
@@ -24,7 +24,7 @@ def get_semester_ids():
     return set(semesters.id)
 
 def get_professor_ids():
-    path = "../data/csvs/professors.csv"
+    path = "database/input/csvs/professors.csv"
     with open(path) as csv_file:
         professors = pd.read_csv(csv_file,
                                  delimiter=",",
@@ -36,7 +36,7 @@ def get_professor_ids():
 
 
 def get_subject_ids():
-    path = "../data/csvs/subjects.csv"
+    path = "database/input/csvs/subjects.csv"
     with open(path) as csv_file:
         subjects = pd.read_csv(csv_file,
                                delimiter=",",
@@ -47,7 +47,7 @@ def get_subject_ids():
     return set(subjects.id)
 
 def get_classroom_ids():
-    path = "../data/csvs/classrooms.csv"
+    path = "database/input/csvs/classrooms.csv"
     with open(path) as csv_file:
         classrooms = pd.read_csv(csv_file,
                                  delimiter=",",
@@ -128,7 +128,7 @@ def is_valid_season(value: str):
 
 
 def analyze_faculties():
-    path = "../data/csvs/editfaculties.csv"
+    path = "database/input/csvs/editfaculties.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -202,7 +202,7 @@ def analyze_faculties():
 
 
 def analyze_classrooms():
-    path = "../data/csvs/editclassrooms.csv"
+    path = "database/input/csvs/editclassrooms.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -283,7 +283,7 @@ def analyze_classrooms():
 
 
 def analyze_professors():
-    path = "../data/csvs/editprofessors.csv"
+    path = "database/input/csvs/editprofessors.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -361,7 +361,7 @@ def analyze_professors():
 
 
 def analyze_semesters():
-    path = "../data/csvs/editsemesters.csv"
+    path = "database/input/csvs/editsemesters.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -455,7 +455,7 @@ def analyze_semesters():
 
 
 def analyze_subjects():
-    path = "../data/csvs/editsubjects.csv"
+    path = "database/input/csvs/editsubjects.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -537,7 +537,9 @@ def analyze_subjects():
 
     #  Duplicates in FKs?
     duplicate_fks = False
-    for semester_fks in subjects.semesterIds:
+
+    for index, row in subjects.iterrows():
+        semester_fks = row.semesterIds
         sem_fks = semester_fks.split(",")
         seen = set()
         for fk in sem_fks:
@@ -553,7 +555,7 @@ def analyze_subjects():
 
 
 def analyze_rasps():
-    path = "../data/csvs/editrasps.csv"
+    path = "database/input/csvs/editrasps.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

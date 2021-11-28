@@ -5,7 +5,7 @@ from collections import defaultdict
 #TODO: Check if there is enough time allowed -> Prof for all their rasps and rooms for all rasps (take computer into account)
 
 def get_professor_ids():
-    path = "../data/csvs/professors.csv"
+    path = "database/input/csvs/professors.csv"
     with open(path) as csv_file:
         professors = pd.read_csv(csv_file,
                                  delimiter=",",
@@ -17,7 +17,7 @@ def get_professor_ids():
 
 
 def get_classrooms():
-    path = "../data/csvs/classrooms.csv"
+    path = "database/input/csvs/classrooms.csv"
     with open(path) as csv_file:
         classrooms = pd.read_csv(csv_file,
                                  delimiter=",",
@@ -29,7 +29,7 @@ def get_classrooms():
 
 
 def get_rasps():
-    path_sem = "../data/csvs/semesters.csv"
+    path_sem = "database/input/csvs/semesters.csv"
     with open(path_sem) as csv_file:
         semesters = pd.read_csv(csv_file,
                                 delimiter=",",
@@ -37,7 +37,7 @@ def get_rasps():
                                 on_bad_lines='error')
         semesters = pd.DataFrame(semesters).fillna("").astype("str")
 
-    path_sub = "../data/csvs/subjects.csv"
+    path_sub = "database/input/csvs/subjects.csv"
     with open(path_sub) as csv_file:
         subjects = pd.read_csv(csv_file,
                                delimiter=",",
@@ -45,7 +45,7 @@ def get_rasps():
                                on_bad_lines='error')
         subjects = pd.DataFrame(subjects).fillna("").astype("str")
 
-    path_rasps = "../data/csvs/rasps.csv"
+    path_rasps = "database/input/csvs/rasps.csv"
     with open(path_rasps) as csv_file:
         rasps = pd.read_csv(csv_file,
                             delimiter=",",
@@ -226,7 +226,7 @@ def is_valid_time(time: str, file_name, index, column):
 
 
 def analyze_classroom_available():
-    path = "../constraints/csvs/editclassroom_available.csv"
+    path = "database/constraints/csvs/editclassroom_available.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -327,7 +327,7 @@ def analyze_classroom_available():
 
 
 def analyze_professor_available():
-    path = "../constraints/csvs/editprofessor_available.csv"
+    path = "database/constraints/csvs/editprofessor_available.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

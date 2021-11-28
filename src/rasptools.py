@@ -1,8 +1,8 @@
-from tqdm import tqdm
 import random
 import numpy as np
+from tqdm import tqdm
+from collections import defaultdict
 from multiprocessing import Pool
-from itertools import product
 
 class Optimizer:
     def __init__(self, data):
@@ -15,6 +15,7 @@ class Optimizer:
         self.computer_rooms = data["computer_rooms"]
         self.room_capacity = data["room_capacity"]
         self.students = data["students_estimate"]
+        self.season = data["season"]
 
 
     def initialize_random_sample(self, N):
@@ -49,12 +50,9 @@ class Optimizer:
         return sample
 
 
-    def grade(self, timetable, verbose=False):
+    def grade(self, timetable):
         room_taken = {k:v.copy() for k,v in self.classroom_occupied.items()}
         prof_taken = {k:v.copy() for k,v in self.professor_occupied.items()}
-
-        if verbose:
-            initial_room_taken = {k:v.copy() for k,v in self.classroom_occupied.items()}
 
         for rasp, (room, day, hour) in timetable.items():
             room_taken[room][day, hour:(hour + rasp.duration)] += 1
@@ -68,44 +66,29 @@ class Optimizer:
             # Room collisions
             cnt = sum(room_taken[room][day, hour:(hour + rasp.duration)]>1)
             score_rooms = cnt * self.students[rasp]
-            if verbose and score_rooms:
-                print(f"Room collision ({room}): {score_rooms}")
-                print(initial_room_taken[room])
-                print(room_taken[room])
-                print(rasp)
             total_room_score -= score_rooms
             total_score -= score_rooms
 
             # Professor collisions
             cnt = sum(prof_taken[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
             score_professors = cnt * self.students[rasp]
-            if verbose and score_professors:
-                print(f"Professor collision ({rasp.professorId}): {score_professors}")
-                print(prof_taken[rasp.professorId])
-                print(rasp)
             total_professor_score -= score_professors
             total_score -= score_professors
 
             # Insufficient room capacity
             capacity = bool(self.students[rasp] - self.room_capacity[room]>=0)
             score_capacity = capacity * rasp.duration * self.students[rasp]
-            if verbose and capacity:
-                print(f"Capacity ({room},{rasp.subjectId},{self.students[rasp]}): {score_capacity}")
             total_capacity_score -= score_capacity
             total_score -= score_capacity
 
             # Computer room & computer rasp collisions
             if not room in self.computer_rooms and rasp.needsComputers:
                 score_computers = self.students[rasp]
-                if verbose and score_computers:
-                    print(f"Computer rasp in non-computer room {rasp.subjectId}/{room}: {score_computers}")
                 total_computers_score -= score_computers
                 total_score -= score_computers
 
             if room in self.computer_rooms and not rasp.needsComputers:
                 score_computers = self.students[rasp] * 0.1
-                if verbose and score_computers:
-                    print(f"Non-computer rasp in computer room {rasp.subjectId}/{room}: {score_computers}")
                 total_computers_score -= score_computers
                 total_score -= score_computers
 
@@ -114,17 +97,14 @@ class Optimizer:
         for semester, the_nasts in self.nasts.items():
             score_nasts = 0
             for nast in the_nasts:
-                nast_taken =  np.zeros((5,16), dtype=np.int32)
+                nast_occupied =  np.zeros((5,16), dtype=np.int32)
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
-                    nast_taken[day, hour:(rasp.duration + hour)] += 1
+                    nast_occupied[day, hour:(rasp.duration + hour)] += 1
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
-                    cnt = sum(nast_taken[day, hour:(rasp.duration + hour)]>1)
+                    cnt = sum(nast_occupied[day, hour:(rasp.duration + hour)]>1)
                     score_nasts += cnt * self.students[rasp]
-            if verbose and score_nasts:
-                print(f"Nast collisions {semester}: {score_nasts}")
-                print(nast_taken)
             total_nast_score -= score_nasts
             total_score -= score_nasts
 
@@ -296,6 +276,44 @@ class Optimizer:
 
             except KeyboardInterrupt:
                 print("EXITING")
-                return sample
+                return self.finalize_output(sample)
 
-        return sample
+        return self.finalize_output(sample)
+
+
+    def finalize_output(self, sample):
+        output = []
+        for grade, timetable in sample:
+            rooms_occupied = {k:v.copy() for k,v in self.classroom_occupied.items()}
+            professors_occupied = {k:v.copy() for k,v in self.professor_occupied.items()}
+            for rasp, (room, day, hour) in timetable.items():
+                rooms_occupied[room][day, hour:(hour + rasp.duration)] += 1
+                professors_occupied[rasp.professorId][day, hour:(hour + rasp.duration)] += 1
+
+            nasts_occupied = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
+            for semester, the_nasts in self.nasts.items():
+                sem_id, num_semester, num_students = semester
+                nast_key = f"{sem_id},{num_semester},{num_students}"
+
+                # this is different than in self.grade function!
+                seen_rasps = set()
+                nast_occupied = np.zeros((5,16), dtype=np.int32)
+                for nast in the_nasts:
+                    for rasp in nast:
+                        if rasp.id in seen_rasps:
+                            continue
+
+                        seen_rasps.add(rasp.id)
+                        _, day, hour = timetable[rasp]
+                        nast_occupied[day, hour:(rasp.duration + hour)] += 1
+                nasts_occupied[nast_key] = nast_occupied
+
+            data = {"grade": grade,
+                    "timetable": timetable,
+                    "season": self.season,
+                    "rooms_occupied": rooms_occupied,
+                    "professors_occupied": professors_occupied,
+                    "nasts_occupied": dict(**nasts_occupied)}
+            output.append(data)
+
+        return output
