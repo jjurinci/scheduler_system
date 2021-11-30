@@ -297,9 +297,24 @@ class Optimizer:
             for semester, the_nasts in self.nasts.items():
                 sem_id, _, _, _ = semester
 
-                # this is different than in self.grade function!
+                # If student can choose exactly N=1 optional subjects then and
+                # only then are apriori parallel optional subjects allowed.
+                # There's no upper limit to parallelism, the algorithm could
+                # theoretically put all optionals into the same (day, hour) slot.
+                # Of course, then it would need a new room for each slot.
+                #
+                # If student can choose N>=2 optionals then there can be no
+                # apriori parallel optional subjects because student could choose
+                # any combination of N subjects and therefore they couldn't
+                # be in parallel.
+
+                #TODO: Tidy up the variable naming and fetch them from proper places
+                NUM_OPTIONALS_ALLOWED = 1
+                PARALLEL_OPTIONALS_ALLOWED = True if NUM_OPTIONALS_ALLOWED == 1 else False
+
                 seen_rasps = set()
                 nast_occupied = np.zeros((5,16), dtype=np.int32)
+                optionals_occupied = np.zeros((5,16), dtype=np.int32)
                 for nast in the_nasts:
                     for rasp in nast:
                         if rasp.id in seen_rasps:
@@ -307,7 +322,18 @@ class Optimizer:
 
                         seen_rasps.add(rasp.id)
                         _, day, hour = timetable[rasp]
-                        nast_occupied[day, hour:(rasp.duration + hour)] += 1
+
+                        # If no parallel rasps then every rasp presence at day,hour is taxed.
+                        if rasp.mandatory or not PARALLEL_OPTIONALS_ALLOWED:
+                            nast_occupied[day, hour:(rasp.duration + hour)] += 1
+                        else:
+                            # Only tax optional rasp's presence at day,hour
+                            # if it is the first optional rasp at that day,hour.
+                            for hr in range(hour, hour + rasp.duration):
+                                if optionals_occupied[day, hr] == 0.0:
+                                    nast_occupied[day, hr] += 1
+                            optionals_occupied[day, hour:(rasp.duration + hour)] += 1
+
                 nasts_occupied[sem_id] = nast_occupied
 
             data = {"grade": grade,
