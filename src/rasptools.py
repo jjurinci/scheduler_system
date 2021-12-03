@@ -33,7 +33,7 @@ class Optimizer:
                     if slot[2]+rasp.duration<=15:
                         okay = True
                 timetable[rasp] = slot
-                avs.remove(slot)
+                avs.remove(slot) #Primitive remove, not taking into account rasp.duration slots, future rasp could take these slots
             timetable.update(self.fixed)
             sample.append((self.grade(timetable), timetable))
         sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
@@ -98,7 +98,7 @@ class Optimizer:
         for semester, the_nasts in self.nasts.items():
             score_nasts = 0
             for nast in the_nasts:
-                nast_occupied =  np.zeros((5,16), dtype=np.int32)
+                nast_occupied =  np.zeros((5,16), dtype=np.uint8)
                 for rasp in nast:
                     _, day, hour = timetable[rasp]
                     nast_occupied[day, hour:(rasp.duration + hour)] += 1
@@ -130,15 +130,15 @@ class Optimizer:
         avs = self.free_terms.copy()
         for rasp, (room, day, hour) in new_timetable.items():
             terms = {(room, day, hour+i) for i in range(rasp.duration)}
-            avs -= terms
+            avs -= terms #smart remove slots, takes into account entire rasp.duration
 
         nonavs = set()
         for (room, day, hour) in avs:
             if any((room, day, hour+i) not in avs for i in range(1,rasp0.duration)):
                 nonavs.add((room, day, hour))
 
-        avs -= nonavs
-        slot = random.choice(list(avs))
+        avs -= nonavs #smart remove slots, removes starting slots with insufficient duration to hold rasp0
+        slot = random.choice(list(avs)) #there is no way that we create a room collision here, prof collision yes coz prof might be occupied at this time
         new_timetable[rasp0] = slot
         return new_timetable
 
@@ -293,7 +293,7 @@ class Optimizer:
                 rooms_occupied[room][day, hour:(hour + rasp.duration)] += 1
                 professors_occupied[rasp.professorId][day, hour:(hour + rasp.duration)] += 1
 
-            nasts_occupied = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.int32))
+            nasts_occupied = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.uint8))
             for semester, the_nasts in self.nasts.items():
                 sem_id, _, _, _ = semester
 
@@ -313,8 +313,8 @@ class Optimizer:
                 PARALLEL_OPTIONALS_ALLOWED = True if NUM_OPTIONALS_ALLOWED == 1 else False
 
                 seen_rasps = set()
-                nast_occupied = np.zeros((5,16), dtype=np.int32)
-                optionals_occupied = np.zeros((5,16), dtype=np.int32)
+                nast_occupied = np.zeros((5,16), dtype=np.uint8)
+                optionals_occupied = np.zeros((5,16), dtype=np.uint8)
                 for nast in the_nasts:
                     for rasp in nast:
                         if rasp.id in seen_rasps:

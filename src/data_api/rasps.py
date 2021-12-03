@@ -13,6 +13,8 @@ def get_rasps():
         rasp["mandatory"] = True if rasp["mandatory"] == "1" else False
         rasp["needsComputers"] = True if rasp["needsComputers"] == "1" else False
         rasp["totalGroups"] = int(rasp["totalGroups"])
+        rasp["INTERVAL"] = int(rasp["INTERVAL"])
+        rasp["BYWEEKDAY"] = None if not rasp["BYWEEKDAY"] else tuple(rasp["BYWEEKDAY"])
         rasp = Rasp(**{field: rasp[field] for field in Rasp._fields})
         typed_rasps.append(rasp)
 

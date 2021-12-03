@@ -94,7 +94,7 @@ def analyze_timetable():
     for semester, the_nasts in nasts.items():
         score_nasts = 0
         for nast in the_nasts:
-            nast_taken =  np.zeros((5,16), dtype=np.int32)
+            nast_taken =  np.zeros((5,16), dtype=np.uint8)
             for rasp in nast:
                 _, day, hour = timetable[rasp]
                 nast_taken[day, hour:(rasp.duration + hour)] += 1
