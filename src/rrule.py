@@ -295,6 +295,7 @@ class Optimizer:
         new_timetable.pop(rasp0, 0)
         avs_pool = self.starting_slots.copy()
 
+        week, day, hour = -1, -1, -1
         #case: has no DTSTART
         DTSTART = rasp0.DTSTART
         if not DTSTART:
@@ -302,13 +303,15 @@ class Optimizer:
 
         #case: has DTSTART without hour
         elif DTSTART and not DTSTART.hour:
-            week, day, _ = self.date_to_index(DTSTART)
-            avs_pool = {slot for slot in self.free_slots if slot.week == week and slot.day == day} #TODO: Optimize
+            pass
+            #week, day, _ = self.date_to_index(DTSTART)
+            #avs_pool = {slot for slot in self.free_slots if slot.week == week and slot.day == day} #TODO: Optimize
 
-        #case: has DTSTART and hour
+        #case: has DTSTART and hour (care! -> random_sample sets DTSTART with hour) TODO: Check if FIXED DTSTART with hour
         elif DTSTART and DTSTART.hour:
-            week, day, hour = self.date_to_index(DTSTART)
-            avs_pool = {slot for slot in self.free_slots if slot.week == week and slot.day == day and slot.hour == hour}
+            pass
+            #week, day, hour = self.date_to_index(DTSTART)
+            #avs_pool = {slot for slot in self.free_slots if slot.week == week and slot.day == day and slot.hour == hour}
 
         taken_terms = set()
         for rasp, (room_id, week, day, hour) in timetable.items():
@@ -322,6 +325,9 @@ class Optimizer:
         avs_pool -= nonavs
 
         if not avs_pool:
+            print("nothing")
+            print(len(self.starting_slots))
+            print(week, day, hour)
             new_timetable[rasp0] = old_slot
             return new_timetable
 
