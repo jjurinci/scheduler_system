@@ -57,7 +57,7 @@ class Optimizer:
 
 
     def __weeks_between(self, start_date, end_date):
-        weeks = rrule(WEEKLY, dtstart=start_date, until=end_date)
+        weeks = rrule(WEEKLY, dtstart=start_date, until=end_date, cache=True)
         return weeks.count()
 
 
@@ -173,6 +173,7 @@ class Optimizer:
 
                 timetable.pop(rasp, 0)
                 rasp = rasp._replace(DTSTART=NEW_DTSTART, UNTIL=NEW_UNTIL)
+                rasp = rasp._replace(rrule_dates = self.get_rrule_dates(rasp))
 
                 timetable[rasp] = slot
 
@@ -181,37 +182,41 @@ class Optimizer:
         return sample
 
 
+    def nast_tax_rrule_optional_rasp(self, optionals_occupied, nast_occupied, rasp, hour):
+        for hr in range(hour, hour + rasp.duration):
+            for date in rasp.rrule_dates:
+                week, day, _ = self.date_to_index(date)
+                if optionals_occupied[week, day, hr] == 0.0:
+                    nast_occupied[week, day, hr] += 1
+            self.tax_rrule_in_matrix3D(optionals_occupied, rasp)
+
+
     # TODO: Add more parameters to RRULE later
     def tax_rrule_in_matrix3D(self, matrix3D, rasp):
-        #print(rasp.subjectId, rasp.type, rasp.group, rasp.DTSTART, rasp.UNTIL)
-        freqs = {"WEEKLY":WEEKLY}
-        byweekdays = {"MO":MO, "TU":TU, "WE":WE, "TH":TH, "FR":FR}
-        FREQ = freqs[rasp.FREQ]
-
-        BYWEEKDAY = None if not rasp.BYWEEKDAY else [byweekdays[wday] for wday in rasp.BYWEEKDAY]
-
-        rasp_dates = list(rrule(freq = FREQ, interval = rasp.INTERVAL,
-                                byweekday = BYWEEKDAY,
-                                dtstart = rasp.DTSTART, until = rasp.UNTIL))
-
-        for date in rasp_dates:
+        for date in rasp.rrule_dates:
             week, day, hour = self.date_to_index(date)
             matrix3D[week, day, hour:(hour + rasp.duration)] += 1
 
 
     def count_rrule_in_matrix3D(self, matrix3D, rasp):
+        count = 0
+        for date in rasp.rrule_dates:
+            week, day, hour = self.date_to_index(date)
+            count += sum(matrix3D[week, day, hour:(hour + rasp.duration)]>1)
+
+        return count
+
+
+    def get_rrule_dates(self, rasp):
         freqs = {"WEEKLY":WEEKLY}
         FREQ = freqs[rasp.FREQ]
 
-        rasp_dates = list(rrule(freq = FREQ, interval = rasp.INTERVAL, byweekday = rasp.BYWEEKDAY,
-                          dtstart = rasp.DTSTART, until = rasp.UNTIL))
+        byweekdays = {"MO":MO, "TU":TU, "WE":WE, "TH":TH, "FR":FR}
+        BYWEEKDAY = None if not rasp.BYWEEKDAY else [byweekdays[wday] for wday in rasp.BYWEEKDAY]
 
-        count = 0
-        for date in rasp_dates:
-            week, day, hour = self.date_to_index(date)
-            count += sum(matrix3D[week, day, hour:(hour + rasp.duration)] > 1)
-
-        return count
+        rasp_dates = tuple(rrule(freq = FREQ, interval = rasp.INTERVAL, byweekday = BYWEEKDAY,
+                           dtstart = rasp.DTSTART, until = rasp.UNTIL, cache=True))
+        return rasp_dates
 
 
     def grade(self, timetable):
@@ -258,22 +263,45 @@ class Optimizer:
 
         #TODO: Optimize, it's quite slow
         # Nast collisions
+
         total_nast_score = 0
-        #for semester, the_nasts in self.nasts.items():
-        #    score_nasts = 0
-        #    for nast in the_nasts:
-        #        nast_occupied =  np.zeros((self.NUM_WEEKS,5,self.NUM_HOURS), dtype=np.uint8)
-        #        for rasp in nast:
-        #            rasp = next(r for r in timetable.keys() if rasp.id == r.id)
-        #            room_id, week, day, hour = timetable[rasp]
-        #            self.tax_rrule_in_matrix3D(nast_occupied, rasp)
-        #        for rasp in nast:
-        #            rasp = next(r for r in timetable.keys() if rasp.id == r.id)
-        #            room_id, week, day, hour = timetable[rasp]
-        #            cnt = self.count_rrule_in_matrix3D(nast_occupied, rasp)
-        #            score_nasts += cnt * self.students[rasp.id]
-        #    total_nast_score -= score_nasts
-        #    total_score -= score_nasts
+        nasts_occupied = defaultdict(lambda: np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8))
+        for semester, the_nasts in self.nasts.items():
+            sem_id, _, _, _ = semester
+            score_nasts = 0
+
+            NUM_OPTIONALS_ALLOWED = 1
+            PARALLEL_OPTIONALS_ALLOWED = True if NUM_OPTIONALS_ALLOWED == 1 else False
+
+            seen_rasps = set()
+            taxed_rasps = set()
+            optionals_occupied = np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8)
+            for nast in the_nasts:
+                for rasp in nast:
+                    if rasp.id in seen_rasps:
+                        continue
+                    seen_rasps.add(rasp.id)
+
+                    rasp = next(r for r in timetable.keys() if rasp.id == r.id)
+                    room_id, week, day, hour = timetable[rasp]
+
+                    if rasp.mandatory or not PARALLEL_OPTIONALS_ALLOWED:
+                        self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp)
+                    else:
+                        self.nast_tax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp, hour)
+
+                for rasp in nast:
+                    if rasp.id in taxed_rasps:
+                        continue
+                    taxed_rasps.add(rasp.id)
+
+                    rasp = next(r for r in timetable.keys() if rasp.id == r.id)
+                    room_id, week, day, hour = timetable[rasp]
+                    cnt = self.count_rrule_in_matrix3D(nasts_occupied[sem_id], rasp)
+                    score_nasts += cnt * self.students[rasp.id]
+
+            total_nast_score -= score_nasts
+            total_score -= score_nasts
 
         final_score = {
                 "totalScore": total_score,
@@ -326,8 +354,6 @@ class Optimizer:
 
         if not avs_pool:
             print("nothing")
-            print(len(self.starting_slots))
-            print(week, day, hour)
             new_timetable[rasp0] = old_slot
             return new_timetable
 
@@ -343,7 +369,9 @@ class Optimizer:
             until_week, until_day, _ = self.date_to_index(NEW_UNTIL)
             NEW_UNTIL = self.index_to_date(until_week, until_day, slot.hour)
 
-        rasp0 = rasp0._replace(DTSTART = NEW_DTSTART, UNTIL = NEW_UNTIL)
+        rasp0 = rasp0._replace(DTSTART=NEW_DTSTART, UNTIL=NEW_UNTIL)
+        rasp0 = rasp0._replace(rrule_dates = self.get_rrule_dates(rasp0))
+
         new_timetable[rasp0] = slot
         return new_timetable
 
