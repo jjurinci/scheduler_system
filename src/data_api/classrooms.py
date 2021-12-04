@@ -62,7 +62,7 @@ def get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, room_available, rooms):
     return FREE_TERMS
 
 
-def get_rooms_occupied2(NUM_WEEKS, NUM_HOURS, free_slots, rasps):
+def get_rooms_occupied(NUM_WEEKS, NUM_HOURS, free_slots, rasps):
     #1 = [room][week,day,hour] IS OCCUPIED, 0 = [room][week,day,hour] IS FREE
     rooms_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS, 5, NUM_HOURS), dtype=np.uint8))
     for room, week, day, hour in free_slots:
@@ -73,7 +73,7 @@ def get_rooms_occupied2(NUM_WEEKS, NUM_HOURS, free_slots, rasps):
     return rooms_occupied
 
 
-def get_rooms_occupied(FREE_TERMS, rasps, FIXED):
+def get_rooms_occupied_old(FREE_TERMS, rasps, FIXED):
     #1 = [room][day,hour] IS OCCUPIED, 0 = [room][day,hour] IS FREE
     rooms_occupied = defaultdict(lambda: np.ones(shape=(5,16), dtype=np.uint8))
     for room, day, hour in FREE_TERMS:

@@ -89,7 +89,7 @@ def get_students_per_rasp_estimate(nasts):
         num_students = semester[3]
         stud_per_nast = num_students/len(the_nasts)
         for nast in the_nasts:
-            margin = {rasp: stud_per_nast for rasp in nast}
+            margin = {rasp.id: stud_per_nast for rasp in nast}
             students_estimate.update(margin)
 
     return students_estimate

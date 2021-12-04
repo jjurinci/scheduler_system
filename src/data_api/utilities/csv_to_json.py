@@ -14,7 +14,7 @@ def csv_to_dict(path, name):
             else:
                 new_row = []
                 for i, val in enumerate(row):
-                    if "Ids" in keys[i] or keys[i] == "BYWEEKDAY":
+                    if "Ids" in keys[i] or (keys[i] == "BYWEEKDAY" and val):
                         new_row.append(val.split(","))
                     elif val == "":
                         new_row.append(None)
