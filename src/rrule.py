@@ -261,9 +261,7 @@ class Optimizer:
                 total_computers_score -= score_computers
                 total_score -= score_computers
 
-        #TODO: Optimize, it's quite slow
         # Nast collisions
-
         total_nast_score = 0
         nasts_occupied = defaultdict(lambda: np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8))
         for semester, the_nasts in self.nasts.items():
@@ -381,7 +379,7 @@ class Optimizer:
         return self.grade(timetable), timetable
 
 
-    def iterate(self, sample, generations=100, starting_generation=1, population_cap=512):
+    def iterate(self, sample, generations=1000, starting_generation=1, population_cap=512):
         BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
         print(starting_generation-1, BEST_SAMPLE[0])
 
@@ -394,9 +392,11 @@ class Optimizer:
                     the_samples = [s[1] for s in sample]
 
                     mutations = p.map_async(self.mutate_and_grade, the_samples)
+                    probs = p.map_async(self.prob_and_grade, the_samples)
                     mutations.wait()
+                    probs.wait()
 
-                sample += mutations.get()
+                sample += mutations.get() + probs.get()
                 sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
                 sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
                 sample = sample[0:population_cap]
@@ -408,6 +408,92 @@ class Optimizer:
                 return sample
 
         return sample
+
+
+    def fix_problematic(self, timetable):
+        problematic_rasps = []
+
+        rooms_occupied = {k:v.copy() for k,v in self.rooms_occupied.items()}
+        profs_occupied = {k:v.copy() for k,v in self.profs_occupied.items()}
+
+        for rasp, (room_id, week, day, hour) in timetable.items():
+            self.tax_rrule_in_matrix3D(rooms_occupied[room_id], rasp)
+            self.tax_rrule_in_matrix3D(profs_occupied[rasp.professorId], rasp)
+
+        for rasp, (room_id, week, day, hour) in timetable.items():
+            room_problem = self.count_rrule_in_matrix3D(rooms_occupied[room_id], rasp)
+            prof_problem = self.count_rrule_in_matrix3D(profs_occupied[rasp.professorId], rasp)
+            capacity_problem = bool(self.students[rasp.id] - self.room_capacity[room_id]>=0)
+            computer_problem1 = not room_id in self.computer_rooms and rasp.needsComputers
+            computer_problem2 = room_id in self.computer_rooms and not rasp.needsComputers
+
+            if room_problem or prof_problem or capacity_problem or computer_problem1 or computer_problem2:
+                problematic_rasps.append(rasp)
+
+        if not problematic_rasps:
+            return timetable
+
+        new_timetable = timetable.copy()
+
+        # Choose a random problematic rasp
+        rasp0 = random.choice(problematic_rasps)
+        old_slot = new_timetable[rasp0]
+
+        new_timetable.pop(rasp0, 0)
+        avs_pool = self.starting_slots.copy()
+
+        week, day, hour = -1, -1, -1
+        #case: has no DTSTART
+        DTSTART = rasp0.DTSTART
+        if not DTSTART:
+            pass
+
+        #case: has DTSTART without hour
+        elif DTSTART and not DTSTART.hour:
+            pass
+
+        #case: has DTSTART and hour (care! -> random_sample sets DTSTART with hour) TODO: Check if FIXED DTSTART with hour
+        elif DTSTART and DTSTART.hour:
+            pass
+
+        taken_terms = set()
+        for rasp, (room_id, week, day, hour) in timetable.items():
+            taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
+        avs_pool -= taken_terms
+
+        nonavs = set()
+        for (room_id, week, day, hour) in avs_pool:
+            if any((room_id, week, day, hour+i) not in avs_pool for i in range(1, rasp0.duration)):
+                nonavs.add((room_id, week, day, hour))
+        avs_pool -= nonavs
+
+        if not avs_pool:
+            print("avs in prob prob")
+            new_timetable[rasp0] = old_slot
+            return new_timetable
+
+        slot = random.choice(list(avs_pool))
+
+        NEW_DTSTART = self.index_to_date(slot.week, slot.day, slot.hour)
+
+        #case: has no UNTIL
+        NEW_UNTIL = rasp0.UNTIL
+        if not NEW_UNTIL:
+            NEW_UNTIL = self.index_to_date(self.NUM_WEEKS-1, 4, slot.hour)
+        elif NEW_UNTIL:
+            until_week, until_day, _ = self.date_to_index(NEW_UNTIL)
+            NEW_UNTIL = self.index_to_date(until_week, until_day, slot.hour)
+
+        rasp0 = rasp0._replace(DTSTART=NEW_DTSTART, UNTIL=NEW_UNTIL)
+        rasp0 = rasp0._replace(rrule_dates = self.get_rrule_dates(rasp0))
+        new_timetable[rasp0] = slot
+
+        return new_timetable
+
+
+    def prob_and_grade(self, timetable):
+        timetable = self.fix_problematic(timetable)
+        return self.grade(timetable), timetable
 
 
 o = Optimizer()
