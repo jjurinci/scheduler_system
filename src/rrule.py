@@ -4,7 +4,7 @@ from tqdm import tqdm
 import signal
 from collections import defaultdict
 from itertools import product
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.rrule import rrule, DAILY, WEEKLY, MO, TU, WE, TH, FR
 from multiprocessing import Pool
 import data_api.classrooms as room_api
@@ -20,6 +20,15 @@ class Optimizer:
         self.NUM_WEEKS = self.__weeks_between(self.START_SEMESTER_DATE, self.END_SEMESTER_DATE)
 
         self.day_structure = self.get_day_structure()
+        self.hourmin_to_index = {}
+        self.index_to_hourmin = {}
+        index = 0
+        for timeblock in self.day_structure["timeblock"]:
+            start_hourmin = timeblock[:5]
+            self.hourmin_to_index[start_hourmin] = index
+            self.index_to_hourmin[index] = start_hourmin
+            index += 1
+
         self.NUM_HOURS = len(self.day_structure)
 
         self.winter = False
@@ -36,12 +45,6 @@ class Optimizer:
         self.starting_profs = prof_api.get_professors_by_ids(starting_profs_ids)
         self.profs_constraints = prof_api.get_professors_constraints()
         self.profs_occupied = prof_api.get_professors_occupied(self.NUM_WEEKS, self.NUM_HOURS, self.profs_constraints, self.starting_profs)
-
-        self.rasp_dtstart = defaultdict(lambda: None)
-        self.rasp_until= defaultdict(lambda: None)
-        for rasp in self.rasps:
-            self.rasp_dtstart[rasp.id] = rasp.DTSTART
-            self.rasp_until[rasp.id] = rasp.UNTIL
 
 
     def __weeks_between(self, start_date, end_date):
@@ -72,32 +75,49 @@ class Optimizer:
 
 
     def index_to_date(self, week, day, hour):
-        return datetime.now()
+        # 2 (3rd) week, 1 tuesday, 13 (14th) hour
+        hr, mins = 0, 0
+        if hour:
+            hourmin = self.index_to_hourmin[hour]
+            hr, mins = int(hourmin[:2]), int(hourmin[3:5])
+
+        date = self.START_SEMESTER_DATE.replace(hour = hr, minute = mins)
+        week_difference = timedelta(weeks = week)
+        date = date + week_difference
+
+        current_weekday = date.weekday()
+        day_difference = timedelta(days = day - current_weekday)
+        date = date + day_difference
+
+        return date
 
 
-    def date_to_index(self, date):
-        return (1,2,3)
+    def date_to_index(self, date : datetime):
+        week = self.__weeks_between(self.START_SEMESTER_DATE, date) - 1 # -1 coz we want 0 based indexes
+        day = date.weekday() # in Python 0 is Monday, 6 is Sunday
+        hr, mins = date.hour, date.minute
+        hour = None
+        if hr:
+            hr = str(hr) if len(str(hr)) == 2 else "0" + str(hr)
+            mins = str(mins) if len(str(mins)) == 2 else "0" + str(mins)
+            hourmin = hr + ":" + mins
+            hour = self.hourmin_to_index[hourmin]
 
-
-    def update_rasp_rrule(self, rasp_id, NEW_DTSTART, NEW_UNTIL):
-        self.rasp_dtstart[rasp_id] = NEW_DTSTART
-        self.rasp_until[rasp_id] = NEW_UNTIL
+        return week,day,hour
 
 
     def random_sample(self, N):
         sample = []
-        for _ in range(N):
+        for i in range(N):
             all_avs = self.free_slots.copy()
             first_week_avs = self.starting_slots.copy()
-            rasp_dtstart = self.rasp_dtstart.copy()
-            rasp_until = self.rasp_until.copy()
             timetable = {}
             for rasp in self.rasps:
                 slot = None
                 while not slot:
                     avs_pool = first_week_avs
 
-                    DTSTART = rasp_dtstart[rasp.id]
+                    DTSTART = rasp.DTSTART
                     #case: NO DTSTART -> random (room_id, 0, day, hour)
                     if not DTSTART:
                         avs_pool = first_week_avs
@@ -109,6 +129,7 @@ class Optimizer:
 
                     #case: has DTSTART wit hour -> random(room_id, _given_week, _given_day, _given_hour)
                     elif DTSTART and DTSTART.hour:
+                        print(rasp.subjectId, rasp.type, rasp.group)
                         given_week, given_day, given_hour = self.date_to_index(rasp.DTSTART)
                         avs_pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour)
 
@@ -118,24 +139,24 @@ class Optimizer:
                         slot = try_slot
 
                 NEW_DTSTART = self.index_to_date(slot.week, slot.day, slot.hour)
-
-                UNTIL = rasp_until[rasp.id]
-                NEW_UNTIL = None
+                NEW_UNTIL = rasp.UNTIL
 
                 #case has no UNTIL:
-                if not UNTIL:
-                    NEW_UNTIL = self.index_to_date(self.NUM_WEEKS-1, 4, NEW_DTSTART.hour) #last week, last day, DTSTART.hour
+                if not NEW_UNTIL:
+                    NEW_UNTIL = self.index_to_date(self.NUM_WEEKS-1, 4, slot.hour) #last week, last day, DTSTART.hour
 
                 #case has UNTIL without hour OR has UNTIL with hour:
-                elif UNTIL:
-                    until_week, until_day, _ = self.date_to_index(UNTIL)
-                    NEW_UNTIL = self.index_to_date(until_week, until_day, NEW_DTSTART.hour)
+                elif NEW_UNTIL:
+                    until_week, until_day, _ = self.date_to_index(NEW_UNTIL)
+                    NEW_UNTIL = self.index_to_date(until_week, until_day, slot.hour)
 
                 # Remove if they exit
                 all_avs.discard(slot)
                 first_week_avs.discard(slot)
 
-                #self.update_rasp_rrule(rasp.id, NEW_DTSTART, NEW_UNTIL)
+                timetable.pop(rasp, 0)
+                rasp = rasp._replace(DTSTART=NEW_DTSTART, UNTIL=NEW_UNTIL)
+
                 timetable[rasp] = slot
 
             sample.append(timetable)
@@ -149,13 +170,14 @@ class Optimizer:
 
     def mutate(self, timetable):
         new_timetable = timetable.copy()
-        rasp0 = random.choice(self.rasps)
-        new_timetable.pop(rasp0, 0)
+        rasp0 = random.choice(list(new_timetable.keys()))
+        old_slot = new_timetable[rasp0]
 
+        new_timetable.pop(rasp0, 0)
         avs_pool = self.starting_slots.copy()
 
         #case: has no DTSTART
-        DTSTART = self.rasp_dtstart[rasp0.id]
+        DTSTART = rasp0.DTSTART
         if not DTSTART:
             pass
 
@@ -180,21 +202,24 @@ class Optimizer:
                 nonavs.add((room_id, week, day, hour))
         avs_pool -= nonavs
 
+        if not avs_pool:
+            new_timetable[rasp0] = old_slot
+            return new_timetable
+
         slot = random.choice(list(avs_pool))
-        new_timetable[rasp0] = slot
 
         NEW_DTSTART = self.index_to_date(slot.week, slot.day, slot.hour)
 
         #case: has no UNTIL
-        UNTIL = self.rasp_until[rasp0.id]
-        NEW_UNTIL = None
-        if not UNTIL:
+        NEW_UNTIL = rasp0.UNTIL
+        if not NEW_UNTIL:
             NEW_UNTIL = self.index_to_date(self.NUM_WEEKS-1, 4, slot.hour)
-        elif UNTIL:
-            until_week, until_day, _ = self.date_to_index(UNTIL)
-            NEW_UNTIL = self.index_to_date(until_week, until_day, NEW_DTSTART.hour)
+        elif NEW_UNTIL:
+            until_week, until_day, _ = self.date_to_index(NEW_UNTIL)
+            NEW_UNTIL = self.index_to_date(until_week, until_day, slot.hour)
 
-        #self.update_rasp_rrule(rasp0.id, NEW_DTSTART, NEW_UNTIL)
+        rasp0 = rasp0._replace(DTSTART = NEW_DTSTART, UNTIL = NEW_UNTIL)
+        new_timetable[rasp0] = slot
         return new_timetable
 
 
@@ -215,3 +240,5 @@ timetable = sample[3]
 
 mutated = o.mutate(timetable)
 print(len(mutated))
+print(mutated)
+
