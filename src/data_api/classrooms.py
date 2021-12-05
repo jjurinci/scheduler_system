@@ -62,6 +62,16 @@ def get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, room_available, rooms):
     return FREE_TERMS
 
 
+def generate_starting_slots(rooms_occupied, NUM_HOURS):
+    starting_slots = set()
+    for room_id in rooms_occupied:
+        for day in range(5):
+            for hour in range(NUM_HOURS):
+                if rooms_occupied[room_id][0][day][hour] == 0:
+                    starting_slots.add(Slot(room_id, 0, day, hour))
+    return starting_slots
+
+
 def get_rooms_occupied(NUM_WEEKS, NUM_HOURS, free_slots, rasps):
     #1 = [room][week,day,hour] IS OCCUPIED, 0 = [room][week,day,hour] IS FREE
     rooms_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS, 5, NUM_HOURS), dtype=np.uint8))
