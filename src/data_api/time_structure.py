@@ -38,8 +38,7 @@ def old_weeks_between(start_date, end_date):
 
 
 def weeks_between(start_date, end_date):
-    days = abs(start_date-end_date).days
-    return days // 7
+    return (end_date-start_date).days // 7
 
 
 def index_to_date(week, day, hour):
@@ -67,16 +66,15 @@ def index_to_date(week, day, hour):
 
 
 def date_to_index(date : datetime):
-    START_SEMESTER_DATE, _ = get_start_end_semester()
+    START_SEMESTER_DATE = datetime(2021,10,4) #TODO: Change to read from file later
     hourmin_to_index = HOURMIN_TO_INDEX
 
     week = weeks_between(START_SEMESTER_DATE, date)
 
     day = date.weekday() # in Python 0 is Monday, 6 is Sunday
-    hr, mins = date.hour, date.minute
-    hour = None
-    hr = str(hr) if len(str(hr)) == 2 else "0" + str(hr)
-    mins = str(mins) if len(str(mins)) == 2 else "0" + str(mins)
+    hr, mins = str(date.hour), str(date.minute)
+    hr = hr if len(hr) == 2 else "0" + hr
+    mins = mins if len(mins) == 2 else "0" + mins
     hourmin = hr + ":" + mins
     hour = hourmin_to_index[hourmin]
 

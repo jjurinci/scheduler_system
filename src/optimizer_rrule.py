@@ -83,26 +83,20 @@ class Optimizer:
 
     def nast_tax_rrule_optional_rasp(self, optionals_occupied, nast_occupied, rasp, hour, rrule_dates):
         for hr in range(hour, hour + rasp.duration):
-            for date in rrule_dates:
-                week, day, _ = time_api.date_to_index(date)
+            for week, day, _ in rrule_dates:
                 if optionals_occupied[week, day, hr] == 0.0:
                     nast_occupied[week, day, hr] += 1
-            self.tax_rrule_in_matrix3D(optionals_occupied, rasp, rrule_dates)
+        self.tax_rrule_in_matrix3D(optionals_occupied, rasp, rrule_dates)
 
 
-    #Taxing funtions hold 90% of the complexity
     def tax_rrule_in_matrix3D(self, matrix3D, rasp, rrule_dates):
-        for date in rrule_dates:
-            week, day, hour = time_api.date_to_index(date)
+        for week, day, hour in rrule_dates:
             matrix3D[week, day, hour:(hour + rasp.duration)] += 1
 
 
     def count_rrule_in_matrix3D(self, matrix3D, rasp, rrule_dates):
-        count = 0
-        for date in rrule_dates:
-            week, day, hour = time_api.date_to_index(date)
-            count += sum(matrix3D[week, day, hour:(hour + rasp.duration)]>1)
-        return count
+        return sum(np.sum(matrix3D[week, day, hour:(hour + rasp.duration)]>1)
+                   for week, day, hour in rrule_dates)
 
 
     def get_rrule_dates(self, rasp, NEW_DTSTART, NEW_UNTIL):
@@ -112,8 +106,11 @@ class Optimizer:
         byweekdays = {"MO":MO, "TU":TU, "WE":WE, "TH":TH, "FR":FR}
         BYWEEKDAY = None if not rasp.BYWEEKDAY else [byweekdays[wday] for wday in rasp.BYWEEKDAY]
 
-        rasp_dates = tuple(rrule(freq = FREQ, interval = rasp.INTERVAL, byweekday = BYWEEKDAY,
-                           dtstart = NEW_DTSTART, until = NEW_UNTIL, cache=True))
+        rasp_dates = rrule(freq = FREQ, interval = rasp.INTERVAL, byweekday = BYWEEKDAY,
+                           dtstart = NEW_DTSTART, until = NEW_UNTIL, cache=True)
+
+        rasp_dates = tuple(map(time_api.date_to_index, rasp_dates))
+
         return rasp_dates
 
 
@@ -178,10 +175,7 @@ class Optimizer:
                     if rasp.id in seen_rasps:
                         continue
                     seen_rasps.add(rasp.id)
-
-                    #rasp = next(r for r in timetable.keys() if rasp.id == r.id)
                     room_id, _, _, hour = timetable[rasp]
-
                     if rasp.mandatory or not PARALLEL_OPTIONALS_ALLOWED:
                         self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, rasp_rrules[rasp.id]["all_dates"])
                     else:
@@ -191,8 +185,6 @@ class Optimizer:
                     if rasp.id in taxed_rasps:
                         continue
                     taxed_rasps.add(rasp.id)
-
-                    rasp = next(r for r in timetable.keys() if rasp.id == r.id)
                     room_id, _, _, hour = timetable[rasp]
                     cnt = self.count_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, rasp_rrules[rasp.id]["all_dates"])
                     score_nasts += cnt * self.students_estimate[rasp.id]
@@ -254,7 +246,7 @@ class Optimizer:
         if not avs_pool:
             print("nothing")
             new_timetable[rasp0] = old_slot
-            return (new_timetable, rasp_rrules)
+            return new_timetable, rasp_rrules
 
         slot = random.choice(list(avs_pool))
 
@@ -272,7 +264,7 @@ class Optimizer:
         rasp_rrules[rasp0.id] = {"DTSTART": NEW_DTSTART, "UNTIL": NEW_UNTIL, "all_dates": self.get_rrule_dates(rasp0, NEW_DTSTART, NEW_UNTIL)}
         new_timetable[rasp0] = slot
 
-        return (new_timetable, rasp_rrules)
+        return new_timetable, rasp_rrules
 
 
     def mutate_and_grade(self, timetable):
@@ -298,7 +290,7 @@ class Optimizer:
                     probs.wait()
 
                 sample += mutations.get() + probs.get()
-                sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
+                #sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
                 sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
                 sample = sample[0:population_cap]
                 if sample[0][0]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
@@ -307,6 +299,30 @@ class Optimizer:
 
             except KeyboardInterrupt:
                 return sample
+
+        return sample
+
+
+    #Just for testing
+    def iterate_no_parallel(self, sample, generations=1000, starting_generation=1, population_cap=5):
+        BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+        print(starting_generation-1, BEST_SAMPLE[0])
+
+        for generation in tqdm(range(starting_generation, starting_generation+generations)):
+                the_samples = [(s[1], s[2]) for s in sample]
+
+                for s in the_samples:
+                    mutation = self.mutate_and_grade(s)
+                    prob = self.prob_and_grade(s)
+                    sample.append(mutation)
+                    sample.append(prob)
+
+                sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
+                sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
+                sample = sample[0:population_cap]
+                if sample[0][0]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
+                    BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+                    tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
 
         return sample
 
@@ -373,7 +389,7 @@ class Optimizer:
         if not avs_pool:
             print("avs in prob prob")
             new_timetable[rasp0] = old_slot
-            return (new_timetable, rasp_rrules)
+            return new_timetable, rasp_rrules
 
         slot = random.choice(list(avs_pool))
 
@@ -390,7 +406,7 @@ class Optimizer:
         rasp_rrules[rasp0.id] = {"DTSTART": NEW_DTSTART, "UNTIL": NEW_UNTIL, "all_dates": self.get_rrule_dates(rasp0, NEW_DTSTART, NEW_UNTIL)}
         new_timetable[rasp0] = slot
 
-        return (new_timetable, rasp_rrules)
+        return new_timetable, rasp_rrules
 
 
     def prob_and_grade(self, timetable):
