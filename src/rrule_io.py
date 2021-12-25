@@ -3,7 +3,7 @@ import data_api.professors     as prof_api
 import data_api.rasps          as rasp_api
 import data_api.semesters      as seme_api
 import data_api.time_structure as time_api
-from optimizer_rrule import Optimizer
+from dp_optimizer_rrule import Optimizer
 
 START_SEMESTER_DATE, END_SEMESTER_DATE = time_api.get_start_end_semester()
 NUM_WEEKS = time_api.weeks_between(START_SEMESTER_DATE, END_SEMESTER_DATE)
