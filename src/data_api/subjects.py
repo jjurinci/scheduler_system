@@ -10,8 +10,9 @@ def get_subjects():
     typed_subjects = []
     for subject in subjects:
         subject["rasps"] = None
-        subject["semesterIds"] = tuple(subject["semesterIds"])
-        subject["mandatory"] = True if subject["mandatory"]=="1" else False
+        subject["mandatory_in_semesterIds"] = tuple(subject["mandatory_in_semesterIds"]) if subject["mandatory_in_semesterIds"] != [''] else ()
+        subject["optional_in_semesterIds"] = tuple(subject["optional_in_semesterIds"]) if subject["optional_in_semesterIds"] != [''] else ()
+        subject["userId"] = None
         subject = Subject(**{field: subject[field] for field in Subject._fields})
         typed_subjects.append(subject)
 
@@ -24,6 +25,7 @@ def get_subject_by_id(subject_id):
         if sub.id == subject_id:
             return sub
     return -1
+
 
 def get_subject_season(subject):
     all_semesters = seme_api.get_semesters()
@@ -48,8 +50,7 @@ def get_subjects_with_rasps(rasps):
 
         sub = get_subject_by_id(rasp.subjectId)
         if sub != -1:
-            subject = Subject(sub.id, sub.name, sub.mandatory, \
-                              sub.semesterIds, sub.userId, \
-                              subject_rasps[sub.id])
+            subject = Subject(sub.id, sub.name, sub.mandatory_in_semesterIds,
+                              sub.optional_in_semesterIds, sub.userId, subject_rasps[sub.id])
             subjects.append(subject)
     return subjects

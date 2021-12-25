@@ -12,6 +12,7 @@ def get_rooms():
     for room in rooms:
         room["capacity"] = int(room["capacity"])
         room["hasComputers"] = True if room["hasComputers"]=="1" else False
+        room["userId"] = None
         room = Classroom(**{field: room[field] for field in Classroom._fields})
         typed_rooms.append(room)
 

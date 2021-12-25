@@ -7,9 +7,10 @@ from optimizer_rrule import Optimizer
 
 START_SEMESTER_DATE, END_SEMESTER_DATE = time_api.get_start_end_semester()
 NUM_WEEKS = time_api.weeks_between(START_SEMESTER_DATE, END_SEMESTER_DATE)
-day_structure = time_api.get_day_structure()
-hourmin_to_index, index_to_hourmin = time_api.get_hour_index_structure(day_structure)
-NUM_HOURS = len(day_structure)
+timeblocks = time_api.get_day_structure()
+
+hourmin_to_index, index_to_hourmin = time_api.get_hour_index_structure(timeblocks)
+NUM_HOURS = len(timeblocks)
 
 winter = False
 rasps = rasp_api.get_rasps_by_season(winter = winter)
@@ -27,7 +28,7 @@ starting_slots = room_api.generate_starting_slots(rooms_occupied, NUM_HOURS)
 starting_profs_ids = set(rasp.professorId for rasp in rasps)
 starting_profs = prof_api.get_professors_by_ids(starting_profs_ids)
 profs_constraints = prof_api.get_professors_constraints()
-profs_occupied = prof_api.get_professors_occupied(NUM_WEEKS, NUM_HOURS, profs_constraints, starting_profs)
+profs_occupied = prof_api.get_professors_occupied(NUM_WEEKS, NUM_HOURS, profs_constraints, starting_profs_ids)
 
 data = {
         "NUM_WEEKS": NUM_WEEKS,

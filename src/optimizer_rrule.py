@@ -1,13 +1,35 @@
+import sys
 import random
 import numpy as np
 from tqdm import tqdm
 import signal
 from collections import defaultdict
-from dateutil.rrule import rrule, WEEKLY, MO, TU, WE, TH, FR
+from dateutil.rrule import rrulestr
 from multiprocessing import Pool
 import data_api.time_structure as time_api
 
 class Optimizer:
+    def get_size(self, obj, seen=None):
+        """Recursively finds size of objects"""
+        size = sys.getsizeof(obj)
+        if seen is None:
+            seen = set()
+        obj_id = id(obj)
+        if obj_id in seen:
+            return 0
+        # Important mark as seen *before* entering recursion to gracefully handle
+        # self-referential objects
+        seen.add(obj_id)
+        if isinstance(obj, dict):
+            size += sum([self.get_size(v, seen) for v in obj.values()])
+            size += sum([self.get_size(k, seen) for k in obj.keys()])
+        elif hasattr(obj, '__dict__'):
+            size += self.get_size(obj.__dict__, seen)
+        elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+            size += sum([self.get_size(i, seen) for i in obj])
+        return size
+
+
     def __init__(self, data):
         self.NUM_WEEKS = data["NUM_WEEKS"]
         self.NUM_HOURS = data["NUM_HOURS"]
@@ -27,53 +49,58 @@ class Optimizer:
         for i in range(N):
             print(i)
             all_avs = self.free_slots.copy()
-            first_week_avs = self.starting_slots.copy()
-            timetable = {}
-            rasp_rrules = {rasp.id : {"DTSTART": None, "UNTIL": None, "all_dates": []} for rasp in self.rasps}
+            timetable, rasp_rrules = {}, {}
+
+            for rasp in self.rasps:
+                rrule_obj = rrulestr(rasp.rrule)
+                dtstart = rrule_obj._dtstart
+                until = rrule_obj._until
+                dtstart_weekdays = time_api.all_dtstart_weekdays(dtstart) if rasp.random_dtstart_weekday else []
+                rasp_rrules[rasp.id] = {"DTSTART": dtstart, "UNTIL": until, "dtstart_weekdays":dtstart_weekdays, "all_dates":[]}
+
             for rasp in self.rasps:
                 slot = None
                 while not slot:
-                    avs_pool = first_week_avs
+                    pool = set()
+                    # Starting day is a random weekday AND hour is a random hour
+                    DTSTART = rasp_rrules[rasp.id]["DTSTART"]
 
-                    DTSTART = rasp.DTSTART
-                    #case: NO DTSTART -> random (room_id, 0, day, hour)
-                    if not DTSTART:
-                        avs_pool = first_week_avs
+                    if rasp.random_dtstart_weekday and not rasp.fixed_hour:
+                        dtstart_weekdays = rasp_rrules[rasp.id]["dtstart_weekdays"]
+                        for dtstart_weekday in dtstart_weekdays:
+                            given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
+                            pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day)
 
-                    #case: has DTSTART without hour -> random (room_id, _given_week, _given_day, hour)
-                    elif DTSTART and not DTSTART.hour:
-                        print(rasp.subjectId, rasp.type, rasp.group)
-                        given_week, given_day, _ = time_api.date_to_index(rasp.DTSTART)
-                        avs_pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day)
+                    elif rasp.random_dtstart_weekday and rasp.fixed_hour:
+                        dtstart_weekdays = rasp_rrules[rasp.id]["dtstart_weekdays"]
+                        for dtstart_weekday in dtstart_weekdays:
+                            given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
+                            pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour)
 
-                    #case: has DTSTART with hour -> random(room_id, _given_week, _given_day, _given_hour)
-                    elif DTSTART and DTSTART.hour:
-                        print(rasp.subjectId, rasp.type, rasp.group)
-                        given_week, given_day, given_hour = time_api.date_to_index(rasp.DTSTART)
-                        avs_pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour)
+                    elif not rasp.random_dtstart_weekday and not rasp.fixed_hour:
+                        given_week, given_day, _ = time_api.date_to_index(DTSTART)
+                        pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day)
 
-                    try_slot = random.choice(tuple(avs_pool))
+                    elif not rasp.random_dtstart_weekday and rasp.fixed_hour:
+                        given_week, given_day, given_hour = time_api.date_to_index(DTSTART)
+                        pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour)
+
+                    try_slot = random.choice(tuple(pool))
 
                     if try_slot.hour + rasp.duration < self.NUM_HOURS:
                         slot = try_slot
 
                 NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
-                NEW_UNTIL = rasp.UNTIL
-
-                #case has no UNTIL:
-                if not NEW_UNTIL:
-                    NEW_UNTIL = time_api.index_to_date(self.NUM_WEEKS-1, 4, slot.hour) #last week, last day, DTSTART.hour
-
-                #case has UNTIL without hour OR has UNTIL with hour:
-                elif NEW_UNTIL:
-                    until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
-                    NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
+                NEW_UNTIL = rasp_rrules[rasp.id]["UNTIL"]
+                until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
+                NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
 
                 # Remove if they exit
-                all_avs.discard(slot)
-                first_week_avs.discard(slot)
+                all_avs.remove(slot)
 
-                rasp_rrules[rasp.id] = {"DTSTART": NEW_DTSTART, "UNTIL": NEW_UNTIL, "all_dates": self.get_rrule_dates(rasp, NEW_DTSTART, NEW_UNTIL)}
+                rasp_rrules[rasp.id]["DTSTART"] = NEW_DTSTART
+                rasp_rrules[rasp.id]["UNTIL"] = NEW_UNTIL
+                rasp_rrules[rasp.id]["all_dates"] = time_api.get_rrule_dates(rasp.rrule, NEW_DTSTART, NEW_UNTIL)
                 timetable[rasp] = slot
 
             sample.append((self.grade((timetable, rasp_rrules)), timetable, rasp_rrules))
@@ -99,25 +126,15 @@ class Optimizer:
                    for week, day, hour in rrule_dates)
 
 
-    def get_rrule_dates(self, rasp, NEW_DTSTART, NEW_UNTIL):
-        freqs = {"WEEKLY":WEEKLY}
-        FREQ = freqs[rasp.FREQ]
-
-        byweekdays = {"MO":MO, "TU":TU, "WE":WE, "TH":TH, "FR":FR}
-        BYWEEKDAY = None if not rasp.BYWEEKDAY else [byweekdays[wday] for wday in rasp.BYWEEKDAY]
-
-        rasp_dates = rrule(freq = FREQ, interval = rasp.INTERVAL, byweekday = BYWEEKDAY,
-                           dtstart = NEW_DTSTART, until = NEW_UNTIL, cache=True)
-
-        rasp_dates = tuple(map(time_api.date_to_index, rasp_dates))
-
-        return rasp_dates
-
-
     def grade(self, timetable):
         timetable, rasp_rrules = timetable[0], timetable[1]
         rooms_occupied = {k:v.copy() for k,v in self.rooms_occupied.items()}
         profs_occupied = {k:v.copy() for k,v in self.profs_occupied.items()}
+
+        #for rasp, (room_id, _, _, hour) in timetable.items():
+        #    print(rasp)
+        #    print(room_id, rasp_rrules[rasp.id]["all_dates"])
+        #quit()
 
         for rasp, (room_id, _, _, hour) in timetable.items():
             self.tax_rrule_in_matrix3D(rooms_occupied[room_id], rasp, rasp_rrules[rasp.id]["all_dates"])
@@ -175,8 +192,12 @@ class Optimizer:
                     if rasp.id in seen_rasps:
                         continue
                     seen_rasps.add(rasp.id)
+
                     room_id, _, _, hour = timetable[rasp]
-                    if rasp.mandatory or not PARALLEL_OPTIONALS_ALLOWED:
+
+                    rasp_mandatory = True if sem_id in rasp.mandatory_in_semesterIds else False
+
+                    if rasp_mandatory or not PARALLEL_OPTIONALS_ALLOWED:
                         self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, rasp_rrules[rasp.id]["all_dates"])
                     else:
                         self.nast_tax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp, hour, rasp_rrules[rasp.id]["all_dates"])
@@ -193,13 +214,15 @@ class Optimizer:
             total_score -= score_nasts
 
         final_score = {
-                "totalScore": total_score,
-                "roomScore": total_room_score,
-                "professorScore": total_professor_score,
-                "capacityScore": total_capacity_score,
-                "computerScore": total_computers_score,
-                "nastScore": total_nast_score
+                "totalScore": round(total_score,2),
+                "roomScore": round(total_room_score, 2),
+                "professorScore": round(total_professor_score,2),
+                "capacityScore": round(total_capacity_score,2),
+                "computerScore": round(total_computers_score,2),
+                "nastScore": round(total_nast_score,2)
         }
+
+        #print("Constraints size: ",(self.get_size(profs_occupied) + self.get_size(rooms_occupied) + self.get_size(nasts_occupied))/10**6, "MB.")
 
         return final_score
 
@@ -212,56 +235,58 @@ class Optimizer:
         old_slot = new_timetable[rasp0]
 
         new_timetable.pop(rasp0, 0)
-        avs_pool = self.starting_slots.copy()
-
-        week, day, hour = -1, -1, -1
-        #case: has no DTSTART
-        DTSTART = rasp0.DTSTART
-        if not DTSTART:
-            pass
-
-        #case: has DTSTART without hour
-        elif DTSTART and not DTSTART.hour:
-            pass
-            #week, day, _ = self.date_to_index(DTSTART)
-            #avs_pool = {slot for slot in self.free_slots if slot.week == week and slot.day == day} #TODO: Optimize
-
-        #case: has DTSTART and hour (care! -> random_sample sets DTSTART with hour) TODO: Check if FIXED DTSTART with hour
-        elif DTSTART and DTSTART.hour:
-            pass
-            #week, day, hour = self.date_to_index(DTSTART)
-            #avs_pool = {slot for slot in self.free_slots if slot.week == week and slot.day == day and slot.hour == hour}
+        all_avs = self.free_slots.copy()
 
         taken_terms = set()
-        for rasp, (room_id, week, day, hour) in old_timetable.items():
-            taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
-        avs_pool -= taken_terms
+        for rasp, (room_id, _, _, _) in old_timetable.items():
+            for week, day, hour in rasp_rrules[rasp.id]["all_dates"]:
+                taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
+        all_avs -= taken_terms
 
         nonavs = set()
-        for (room_id, week, day, hour) in avs_pool:
-            if any((room_id, week, day, hour+i) not in avs_pool for i in range(1, rasp0.duration)):
+        for (room_id, week, day, hour) in all_avs:
+            if any((room_id, week, day, hour+i) not in all_avs for i in range(1, rasp0.duration)):
                 nonavs.add((room_id, week, day, hour))
-        avs_pool -= nonavs
+        all_avs -= nonavs
 
-        if not avs_pool:
+        pool = set()
+        if rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
+            dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
+            for dtstart_weekday in dtstart_weekdays:
+                given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
+                pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        elif rasp0.random_dtstart_weekday and rasp0.fixed_hour:
+            dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
+            for dtstart_weekday in dtstart_weekdays:
+                given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
+                pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        elif not rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
+            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
+            given_week, given_day, _ = time_api.date_to_index(dtstart)
+            pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        elif not rasp0.random_dtstart_weekday and rasp0.fixed_hour:
+            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
+            given_week, given_day, given_hour = time_api.date_to_index(dtstart)
+            pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        if not pool:
             print("nothing")
             new_timetable[rasp0] = old_slot
             return new_timetable, rasp_rrules
 
-        slot = random.choice(list(avs_pool))
+        slot = random.choice(tuple(pool))
 
         NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
+        NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
+        until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
+        NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
 
-        #case: has no UNTIL
-        NEW_UNTIL = rasp0.UNTIL
-        if not NEW_UNTIL:
-            NEW_UNTIL = time_api.index_to_date(self.NUM_WEEKS-1, 4, slot.hour)
-        elif NEW_UNTIL:
-            until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
-            NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
-
-
-        rasp_rrules[rasp0.id] = {"DTSTART": NEW_DTSTART, "UNTIL": NEW_UNTIL, "all_dates": self.get_rrule_dates(rasp0, NEW_DTSTART, NEW_UNTIL)}
+        rasp_rrules[rasp0.id]["DTSTART"] = NEW_DTSTART
+        rasp_rrules[rasp0.id]["UNTIL"] = NEW_UNTIL
+        rasp_rrules[rasp0.id]["all_dates"] = time_api.get_rrule_dates(rasp0.rrule, NEW_DTSTART, NEW_UNTIL)
         new_timetable[rasp0] = slot
 
         return new_timetable, rasp_rrules
@@ -277,6 +302,7 @@ class Optimizer:
         print(starting_generation-1, BEST_SAMPLE[0])
 
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
+            #print("SAMPLE: ", self.get_size(sample) / 10**6, "MB.")
             try:
                 original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
                 with Pool(7) as p:
@@ -359,51 +385,59 @@ class Optimizer:
         old_slot = new_timetable[rasp0]
 
         new_timetable.pop(rasp0, 0)
-        avs_pool = self.starting_slots.copy()
 
-        week, day, hour = -1, -1, -1
-        #case: has no DTSTART
-        DTSTART = rasp0.DTSTART
-        if not DTSTART:
-            pass
-
-        #case: has DTSTART without hour
-        elif DTSTART and not DTSTART.hour:
-            pass
-
-        #case: has DTSTART and hour (care! -> random_sample sets DTSTART with hour) TODO: Check if FIXED DTSTART with hour
-        elif DTSTART and DTSTART.hour:
-            pass
+        all_avs = self.free_slots.copy()
 
         taken_terms = set()
-        for rasp, (room_id, week, day, hour) in old_timetable.items():
-            taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
-        avs_pool -= taken_terms
+        for rasp, (room_id, _, _, _) in old_timetable.items():
+            for week, day, hour in rasp_rrules[rasp.id]["all_dates"]:
+                taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
+        all_avs -= taken_terms
 
         nonavs = set()
-        for (room_id, week, day, hour) in avs_pool:
-            if any((room_id, week, day, hour+i) not in avs_pool for i in range(1, rasp0.duration)):
+        for (room_id, week, day, hour) in all_avs:
+            if any((room_id, week, day, hour+i) not in all_avs for i in range(1, rasp0.duration)):
                 nonavs.add((room_id, week, day, hour))
-        avs_pool -= nonavs
+        all_avs -= nonavs
 
-        if not avs_pool:
-            print("avs in prob prob")
+        pool = set()
+        if rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
+            dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
+            for dtstart_weekday in dtstart_weekdays:
+                given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
+                pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        elif rasp0.random_dtstart_weekday and rasp0.fixed_hour:
+            dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
+            for dtstart_weekday in dtstart_weekdays:
+                given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
+                pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        elif not rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
+            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
+            given_week, given_day, _ = time_api.date_to_index(dtstart)
+            pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        elif not rasp0.random_dtstart_weekday and rasp0.fixed_hour:
+            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
+            given_week, given_day, given_hour = time_api.date_to_index(dtstart)
+            pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS)
+
+        if not pool:
+            print("nothing")
             new_timetable[rasp0] = old_slot
             return new_timetable, rasp_rrules
 
-        slot = random.choice(list(avs_pool))
+        slot = random.choice(tuple(pool))
 
         NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
+        NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
+        until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
+        NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
 
-        #case: has no UNTIL
-        NEW_UNTIL = rasp0.UNTIL
-        if not NEW_UNTIL:
-            NEW_UNTIL = time_api.index_to_date(self.NUM_WEEKS-1, 4, slot.hour)
-        elif NEW_UNTIL:
-            until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
-            NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
-
-        rasp_rrules[rasp0.id] = {"DTSTART": NEW_DTSTART, "UNTIL": NEW_UNTIL, "all_dates": self.get_rrule_dates(rasp0, NEW_DTSTART, NEW_UNTIL)}
+        rasp_rrules[rasp0.id]["DTSTART"] = NEW_DTSTART
+        rasp_rrules[rasp0.id]["UNTIL"] = NEW_UNTIL
+        rasp_rrules[rasp0.id]["all_dates"] = time_api.get_rrule_dates(rasp0.rrule, NEW_DTSTART, NEW_UNTIL)
         new_timetable[rasp0] = slot
 
         return new_timetable, rasp_rrules

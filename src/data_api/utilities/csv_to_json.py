@@ -14,7 +14,7 @@ def csv_to_dict(path, name):
             else:
                 new_row = []
                 for i, val in enumerate(row):
-                    if "Ids" in keys[i] or (keys[i] == "BYWEEKDAY" and val):
+                    if "Ids" in keys[i]:
                         new_row.append(val.split(","))
                     elif val == "":
                         new_row.append(None)
@@ -60,12 +60,14 @@ def constraints_csv_to_dict(path, name):
 
         return json_dict
 
-faculties  = csv_to_dict("database/input/csvs/faculties.csv",  "faculties")
-semesters  = csv_to_dict("database/input/csvs/semesters.csv",  "semesters")
-professors = csv_to_dict("database/input/csvs/professors.csv", "professors")
-classrooms = csv_to_dict("database/input/csvs/classrooms.csv", "classrooms")
-subjects   = csv_to_dict("database/input/csvs/subjects.csv",   "subjects")
-rasps      = csv_to_dict("database/input/csvs/rasps.csv",      "rasps")
+faculties          = csv_to_dict("database/input/csvs/faculties.csv",  "faculties")
+semesters          = csv_to_dict("database/input/csvs/semesters.csv",  "semesters")
+professors         = csv_to_dict("database/input/csvs/professors.csv", "professors")
+classrooms         = csv_to_dict("database/input/csvs/classrooms.csv", "classrooms")
+subjects           = csv_to_dict("database/input/csvs/subjects.csv",   "subjects")
+rasps              = csv_to_dict("database/input/csvs/rasps.csv",      "rasps")
+day_structure      = csv_to_dict("database/input/csvs/day_structure.csv", "day_structure")
+start_end_year     = csv_to_dict("database/input/csvs/start_end_year.csv", "start_end_year")
 
 dict_to_json("database/input/faculties.json",  faculties)
 dict_to_json("database/input/semesters.json",  semesters)
@@ -73,6 +75,8 @@ dict_to_json("database/input/professors.json", professors)
 dict_to_json("database/input/classrooms.json",  classrooms)
 dict_to_json("database/input/subjects.json",   subjects)
 dict_to_json("database/input/rasps.json",      rasps)
+dict_to_json("database/input/day_structure.json", day_structure)
+dict_to_json("database/input/start_end_year.json", start_end_year)
 
 classroom_available = constraints_csv_to_dict("database/constraints/csvs/classroom_available.csv", "classroomAvailable")
 professor_available = constraints_csv_to_dict("database/constraints/csvs/professor_available.csv", "professorAvailable")

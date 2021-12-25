@@ -13,6 +13,7 @@ def get_semesters():
         semester["numSemester"] = int(semester["numSemester"])
         semester["hasOptionalSubjects"] = int(semester["hasOptionalSubjects"])
         semester["numStudents"] = int(semester["numStudents"])
+        semester["userId"] = None
         semester = Semester(**{field: semester[field] for field in Semester._fields})
         typed_semesters.append(semester)
 
@@ -31,7 +32,7 @@ def get_summer_semesters():
     return semesters
 
 
-def get_nasts_one_semester(subjects, optionals=1):
+def get_nasts_one_semester(subjects, mandatory, optionals=1):
     if (not subjects and optionals) or optionals<0:
         return frozenset()
     elif not subjects:
@@ -41,15 +42,15 @@ def get_nasts_one_semester(subjects, optionals=1):
     subjects = subjects[1:]
     choices = frozenset(frozenset(x) for x in product(*subject.rasps.values()))
     later_included = frozenset()
-    if not subject.mandatory:
-        later_included = get_nasts_one_semester(subjects, optionals)
+    if not mandatory[subject.id]: #subject.mandatory:
+        later_included = get_nasts_one_semester(subjects, mandatory, optionals)
 
         if optionals:
-            included = get_nasts_one_semester(subjects, optionals-1)
+            included = get_nasts_one_semester(subjects, mandatory, optionals-1)
         else:
             included = frozenset()
     else:
-        included = get_nasts_one_semester(subjects, optionals)
+        included = get_nasts_one_semester(subjects, mandatory, optionals)
     included = frozenset(od|li for od, li in product(choices, included))
     return included|later_included
 
@@ -70,8 +71,9 @@ def get_nasts_all_semesters(rasps, winter):
         has_optional_subjects = semester.hasOptionalSubjects
 
         #filtered_subjects = list(filter(lambda s: sem_id in s.semesterIds, subjects))
-        filtered_subjects = [sub for sub in subjects if sem_id in sub.semesterIds]
-        q = get_nasts_one_semester(filtered_subjects, optionals=has_optional_subjects)
+        filtered_subjects = [sub for sub in subjects if sem_id in sub.mandatory_in_semesterIds or sem_id in sub.optional_in_semesterIds]
+        mandatory = {sub.id : True if sem_id in sub.mandatory_in_semesterIds else False for sub in filtered_subjects}
+        q = get_nasts_one_semester(filtered_subjects, mandatory, optionals=has_optional_subjects)
 
         if q is None:
             q = frozenset(frozenset())

@@ -6,8 +6,14 @@ from data_api.utilities.my_types import Professor
 def get_professors():
     with open("database/input/professors.json", "r") as fp:
         professors = json.load(fp)["professors"]
-    professors = [Professor(**{field: prof[field] for field in Professor._fields}) for prof in professors]
-    return professors
+
+    typed_professors = []
+    for prof in professors:
+        prof["userId"] = None
+        prof = Professor(**{field: prof[field] for field in Professor._fields})
+        typed_professors.append(prof)
+
+    return typed_professors
 
 
 def get_professors_constraints():
@@ -27,13 +33,13 @@ def get_professors_in_rasps(rasps):
     return get_professors_by_ids(professor_ids)
 
 
-def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors):
+def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors_ids):
     #1 = [prof.id][week,day,hour] IS OCCUPIED, 0 = [prof.id][week,day,hour] IS FREE
     professor_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS,5,NUM_HOURS), dtype=np.uint8))
     done_professors = {}
     for avail in prof_constraints:
         prof_id = avail["professorId"]
-        if prof_id not in professors:
+        if prof_id not in professors_ids:
             continue
 
         done_professors[prof_id] = True
@@ -51,14 +57,14 @@ def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors):
             professor_occupied[prof_id][week][3] = thursday
             professor_occupied[prof_id][week][4] = friday
 
-    for prof in professors:
-        if prof.id not in done_professors:
+    for prof_id in professors_ids:
+        if prof_id not in done_professors:
             for week in range(NUM_WEEKS):
-                professor_occupied[prof.id][week][0] = [0]*16
-                professor_occupied[prof.id][week][1] = [0]*16
-                professor_occupied[prof.id][week][2] = [0]*16
-                professor_occupied[prof.id][week][3] = [0]*16
-                professor_occupied[prof.id][week][4] = [0]*16
+                professor_occupied[prof_id][week][0] = [0]*16
+                professor_occupied[prof_id][week][1] = [0]*16
+                professor_occupied[prof_id][week][2] = [0]*16
+                professor_occupied[prof_id][week][3] = [0]*16
+                professor_occupied[prof_id][week][4] = [0]*16
 
     return professor_occupied
 
