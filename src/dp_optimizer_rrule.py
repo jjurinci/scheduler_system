@@ -40,6 +40,7 @@ class Optimizer:
         self.computer_rooms = data["computer_rooms"]
         self.free_slots = data["free_slots"]
         self.starting_slots = data["starting_slots"]
+        self.semesters_info = data["semesters_info"]
         self.rooms_occupied = dict(**data["rooms_occupied"])
         self.profs_occupied = dict(**data["profs_occupied"])
 
@@ -54,8 +55,13 @@ class Optimizer:
             rooms_occupied = {k:v.copy() for k,v in self.rooms_occupied.items()}
             profs_occupied = {k:v.copy() for k,v in self.profs_occupied.items()}
             nasts_occupied = defaultdict(lambda: np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8))
-            optionals_occupied = np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8)
+            optionals_occupied = defaultdict(lambda: np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8))
+            #optionals_occupied = np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8)
             groups_occupied = {}
+            for rasp in self.rasps:
+                if rasp.totalGroups > 1:
+                    key = str(rasp.subjectId) + str(rasp.type)
+                    groups_occupied[key] = {}
 
             grade_obj = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
             rasp_grades = {rasp.id : grade_obj.copy() for rasp in self.rasps}
@@ -113,27 +119,7 @@ class Optimizer:
 
                 self.tax_rrule_in_matrix3D(rooms_occupied[slot.room_id], rasp, rasp_rrules[rasp.id]["all_dates"])
                 self.tax_rrule_in_matrix3D(profs_occupied[rasp.professorId], rasp, rasp_rrules[rasp.id]["all_dates"])
-
-                if rasp.totalGroups > 1:
-                    key = str(rasp.subjectId) + str(rasp.type)
-                    if key not in groups_occupied:
-                        groups_occupied[key] = {}
-                    if slot not in groups_occupied[key]:
-                        groups_occupied[key][slot] = 0
-
-                    groups_occupied[key][slot]+=1
-
-                sem_ids = rasp.mandatory_in_semesterIds + rasp.optional_in_semesterIds
-                for sem_id in sem_ids:
-                    key = str(rasp.subjectId) + str(rasp.type)
-                    if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 1:
-                        continue
-
-                    rasp_mandatory = True if sem_id in rasp.mandatory_in_semesterIds else False
-                    if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                        self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, rasp_rrules[rasp.id]["all_dates"])
-                    else:
-                        self.nast_tax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp, slot.hour, rasp_rrules[rasp.id]["all_dates"])
+                self.tax_rasp_nasts(slot, rasp, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
                 all_rasps_grade = {k : v - rasp_grades[rasp.id][k] for k,v in all_rasps_grade.items()}
                 rasp_grades[rasp.id] = self.grade_rasp(rooms_occupied, profs_occupied, nasts_occupied, rasp, slot, rasp_rrules)
@@ -145,13 +131,67 @@ class Optimizer:
                     "rooms_occupied":rooms_occupied,
                     "profs_occupied":profs_occupied,
                     "nasts_occupied":dict(**nasts_occupied),
-                    "optionals_occupied":optionals_occupied,
-                    "groups_occupied":dict(**groups_occupied),
+                    "optionals_occupied": dict(**optionals_occupied),
+                    "groups_occupied": groups_occupied,
                     "rasp_grades": rasp_grades,
                     "rasp_rrules": rasp_rrules}
             sample.append(data)
 
         return sample
+
+    def tax_rasp_nasts(self, slot, rasp, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied):
+        all_dates = rasp_rrules[rasp.id]["all_dates"]
+        sem_ids = rasp.mandatory_in_semesterIds + rasp.optional_in_semesterIds
+        for sem_id in sem_ids:
+            rasp_mandatory = True if sem_id in rasp.mandatory_in_semesterIds else False
+            parallel_optionals = True if self.semesters_info[sem_id].hasOptionalSubjects == 1 else False
+            if rasp.totalGroups == 1:
+                if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
+                    # Tax semester fully
+                    self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, all_dates)
+                elif not rasp_mandatory and parallel_optionals:
+                    # Tax only if it's the first optional at that slot
+                    self.nast_tax_rrule_optional_rasp(nasts_occupied[sem_id], optionals_occupied[sem_id], rasp, slot.hour, all_dates)
+
+            elif rasp.totalGroups > 1:
+                key = str(rasp.subjectId) + str(rasp.type)
+                if slot not in groups_occupied[key]:
+                    groups_occupied[key][slot] = 0
+                if rasp_mandatory:
+                    # Tax only if it's the first "subjectId + type" at that slot
+                    if groups_occupied[key][slot] == 0:
+                        self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, all_dates)
+                elif not rasp_mandatory:
+                    # Tax only if it's the first "subjectId + type" at that slot AND first optional at that slot
+                    if groups_occupied[key][slot] == 0:
+                        self.nast_tax_rrule_optional_rasp(nasts_occupied[sem_id], optionals_occupied[sem_id], rasp, slot.hour, all_dates)
+                groups_occupied[key][slot] += 1
+
+
+    def untax_rasp_nasts(self, slot, rasp, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied):
+        all_dates = rasp_rrules[rasp.id]["all_dates"]
+        sem_ids = rasp.mandatory_in_semesterIds + rasp.optional_in_semesterIds
+        for sem_id in sem_ids:
+            rasp_mandatory = True if sem_id in rasp.mandatory_in_semesterIds else False
+            parallel_optionals = True if self.semesters_info[sem_id].hasOptionalSubjects == 1 else False
+            if rasp.totalGroups == 1:
+                if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
+                    # Untax semester
+                    self.untax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, all_dates)
+                elif not rasp_mandatory and parallel_optionals:
+                    # Untax only if it's the last optional at that slot
+                    self.nast_untax_rrule_optional_rasp(nasts_occupied[sem_id], optionals_occupied[sem_id], rasp, slot.hour, all_dates)
+
+            elif rasp.totalGroups > 1:
+                key = str(rasp.subjectId) + str(rasp.type)
+                groups_occupied[key][slot] -= 1
+                assert groups_occupied[key][slot] >= 0
+                if rasp_mandatory and groups_occupied[key][slot] == 0:
+                    # Untax only if it's the last "subjectId + type" at that slot
+                    self.untax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp, all_dates)
+                elif not rasp_mandatory and groups_occupied[key][slot] == 0:
+                    # Untax only if it's the last "subjectId + type" at that slot AND last optional at that slot
+                    self.nast_untax_rrule_optional_rasp(nasts_occupied[sem_id], optionals_occupied[sem_id], rasp, slot.hour, all_dates)
 
 
     def grade_rasp(self, rooms_occupied, profs_occupied, nasts_occupied, rasp, slot, rasp_rrules):
@@ -201,7 +241,15 @@ class Optimizer:
         return final_score
 
 
-    def nast_untax_rrule_optional_rasp(self, optionals_occupied, nast_occupied, rasp, hour, rrule_dates):
+    def nast_tax_rrule_Ngroup_rasp(self, nast_occupied, groups_occupied, rasp, hour, rrule_dates):
+        for hr in range(hour, hour + rasp.duration):
+            for week, day, _ in rrule_dates:
+                if groups_occupied[week, day, hr] == 0.0:
+                    nast_occupied[week, day, hr] += 1
+        self.tax_rrule_in_matrix3D(groups_occupied, rasp, rrule_dates)
+
+
+    def nast_untax_rrule_optional_rasp(self, nast_occupied, optionals_occupied, rasp, hour, rrule_dates):
         self.untax_rrule_in_matrix3D(optionals_occupied, rasp, rrule_dates)
         for hr in range(hour, hour + rasp.duration):
             for week, day, _ in rrule_dates:
@@ -209,7 +257,7 @@ class Optimizer:
                     nast_occupied[week, day, hr] -= 1
 
 
-    def nast_tax_rrule_optional_rasp(self, optionals_occupied, nast_occupied, rasp, hour, rrule_dates):
+    def nast_tax_rrule_optional_rasp(self, nast_occupied, optionals_occupied, rasp, hour, rrule_dates):
         for hr in range(hour, hour + rasp.duration):
             for week, day, _ in rrule_dates:
                 if optionals_occupied[week, day, hr] == 0.0:
@@ -307,7 +355,6 @@ class Optimizer:
         }
 
         #print("Constraints size: ",(self.get_size(profs_occupied) + self.get_size(rooms_occupied) + self.get_size(nasts_occupied))/10**6, "MB.")
-
         return final_score
 
 
@@ -373,23 +420,7 @@ class Optimizer:
 
         self.untax_rrule_in_matrix3D(rooms_occupied[old_slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
         self.untax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-
-        if rasp0.totalGroups > 1:
-            key = str(rasp0.subjectId) + str(rasp0.type)
-            if key in groups_occupied and slot in groups_occupied[key]:
-                groups_occupied[key][slot] -= 1
-
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 0:
-                    continue
-            rasp_mandatory = True if sem_id in rasp0.mandatory_in_semesterIds else False
-            if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                self.untax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-            else:
-                self.nast_untax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp0, slot.hour, rasp_rrules[rasp0.id]["all_dates"])
+        self.untax_rasp_nasts(old_slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
         NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
         NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
@@ -402,31 +433,11 @@ class Optimizer:
 
         self.tax_rrule_in_matrix3D(rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
         self.tax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+        self.tax_rasp_nasts(slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
-        if rasp0.totalGroups > 1:
-            key = str(rasp0.subjectId) + str(rasp0.type)
-            if key not in groups_occupied:
-                groups_occupied[key] = {}
-            if slot not in groups_occupied[key]:
-                groups_occupied[key][slot] = 0
-            groups_occupied[key][slot]+=1
-
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 1:
-                    continue
-
-            rasp_mandatory = True if sem_id in rasp0.mandatory_in_semesterIds else False
-            if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-            else:
-                self.nast_tax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp0, slot.hour, rasp_rrules[rasp0.id]["all_dates"])
-
-        data["grade"] = {k : v - rasp_grades[rasp0.id][k] for k,v in data["grade"].items()}
+        data["grade"] = {k : round(v - rasp_grades[rasp0.id][k], 2) for k,v in data["grade"].items()}
         rasp_grades[rasp0.id] = self.grade_rasp(rooms_occupied, profs_occupied, nasts_occupied, rasp0, slot, rasp_rrules)
-        data["grade"] = {k : v + rasp_grades[rasp0.id][k] for k,v in data["grade"].items()}
+        data["grade"] = {k : round(v + rasp_grades[rasp0.id][k], 2) for k,v in data["grade"].items()}
 
         new_timetable[rasp0] = slot
         data["timetable"] = new_timetable
@@ -447,17 +458,14 @@ class Optimizer:
 
                     the_samples = [s for s in sample]
 
-                    mutations = p.map_async(self.mutate, the_samples)
-                    #probs = p.map_async(self.fix_problematic, the_samples)
-                    correct = p.map_async(self.find_correct_place, the_samples)
-                    mutations.wait()
-                    #probs.wait()
-                    correct.wait()
+                    #mutations = p.map_async(self.mutate, the_samples[:1])
+                    better_grade = p.map_async(self.find_better_grade, the_samples)
+                    #mutations.wait()
+                    better_grade.wait()
 
-                sample += mutations.get() + correct.get() #+ probs.get() + correct.get()
-                #sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
+                sample += better_grade.get()
                 sample.sort(key=lambda x: x["grade"]["totalScore"], reverse=True)
-                sample = sample[0:population_cap]
+                sample = sample[0:population_cap] #+ mutations.get()
                 if sample[0]["grade"]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
                     BEST_SAMPLE = (sample[0]["grade"], sample[0]["timetable"].copy())
                     tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
@@ -470,29 +478,26 @@ class Optimizer:
 
     #Just for testing
     def iterate_no_parallel(self, sample, generations=1000, starting_generation=1, population_cap=5):
-        BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+        BEST_SAMPLE = (sample[0]["grade"], sample[0]["timetable"].copy())
         print(starting_generation-1, BEST_SAMPLE[0])
 
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
-                the_samples = [(s[1], s[2]) for s in sample]
-
+                the_samples = [s for s in sample]
                 for s in the_samples:
-                    mutation = self.mutate(s)
-                    prob = self.fix_problematic(s)
-                    sample.append(mutation)
-                    sample.append(prob)
+                    better_grade = self.find_better_grade(s)
+                    sample.append(better_grade)
 
                 sample = [x for i, x in enumerate(sample) if i == sample.index(x)]
-                sample.sort(key=lambda x: x[0]["totalScore"], reverse=True)
+                sample.sort(key=lambda x: x["grade"]["totalScore"], reverse=True)
                 sample = sample[0:population_cap]
-                if sample[0][0]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
-                    BEST_SAMPLE = (sample[0][0], sample[0][1].copy())
+                if sample[0]["grade"]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
+                    BEST_SAMPLE = (sample[0]["grade"], sample[0]["timetable"].copy())
                     tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
 
         return sample
 
 
-    def fix_problematic(self, data):
+    def find_better_grade(self, data):
         old_timetable = data["timetable"]
         rasp_rrules = data["rasp_rrules"]
         rooms_occupied = data["rooms_occupied"]
@@ -502,17 +507,9 @@ class Optimizer:
         groups_occupied = data["groups_occupied"]
         rasp_grades = data["rasp_grades"]
 
-        worst_type, worst_grade = "totalScore", 0
-        for error_type, grade in data["grade"].items():
-            if error_type == "totalScore":
-                continue
-            if grade < worst_grade:
-                worst_grade = grade
-                worst_type = error_type
-
         problematic_rasps = []
         for rasp, _ in old_timetable.items():
-            if rasp_grades[rasp.id][worst_type] < 0:
+            if rasp_grades[rasp.id]["totalScore"] < 0:
                 problematic_rasps.append(rasp)
 
         if not problematic_rasps:
@@ -523,9 +520,7 @@ class Optimizer:
         # Choose a random problematic rasp
         rasp0 = random.choice(problematic_rasps)
         old_slot = new_timetable[rasp0]
-
         new_timetable.pop(rasp0, 0)
-
         all_avs = self.free_slots.copy()
 
         taken_terms = set()
@@ -534,53 +529,14 @@ class Optimizer:
                 taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
         all_avs -= taken_terms
 
+        # This takes a while
         nonavs = set()
-
         for (room_id, week, day, hour) in all_avs:
             if any((room_id, week, day, hour+i) not in all_avs for i in range(1, rasp0.duration)):
                    nonavs.add((room_id, week, day, hour))
         all_avs -= nonavs
 
-        if worst_type == "professorScore":
-            nonprof = set()
-            for (room_id, week, day, hour) in all_avs:
-                if any(profs_occupied[rasp0.professorId][week, day, hour:(hour+rasp0.duration)]>1):
-                    nonprof.add((room_id, week, day, hour+i) for i in range(rasp0.duration))
-            all_avs -= nonprof
-
-        elif worst_type == "roomScore":
-            nonroom = set()
-            for (room_id, week, day, hour) in all_avs:
-                if any(rooms_occupied[room_id][week, day, hour:(hour+rasp0.duration)]>1):
-                    nonroom.add((room_id, week, day, hour+i) for i in range(rasp0.duration))
-            all_avs -= nonroom
-
-        elif worst_type == "capacityScore":
-            noncapacity = set()
-            for (room_id, week, day, hour) in all_avs:
-                capacity = bool(self.students_estimate[rasp0.id] - self.room_capacity[room_id]>=0)
-                if not capacity:
-                    noncapacity.add((room_id, week, day, hour))
-            all_avs -= noncapacity
-
-        elif worst_type == "computerScore":
-            nonpc = set()
-            for (room_id, week, day, hour) in all_avs:
-                if not room_id in self.computer_rooms and rasp0.needsComputers:
-                    nonpc.add((room_id, week, day, hour))
-
-                if room_id in self.computer_rooms and not rasp0.needsComputers:
-                    nonpc.add((room_id, week, day, hour))
-            all_avs -= nonpc
-
-        elif worst_type == "nastScore":
-            nonnast = set()
-            sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-            for (room_id, week, day, hour) in all_avs:
-                if any(any(nasts_occupied[sem_id][week, day, hour:(hour+rasp0.duration)]>1) for sem_id in sem_ids):
-                    nonnast.add((room_id, week, day, hour+i) for i in range(rasp0.duration))
-            all_avs -= nonnast
-
+        # This takes a while
         pool = set()
         if rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
             dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
@@ -604,40 +560,57 @@ class Optimizer:
             given_week, given_day, given_hour = time_api.date_to_index(dtstart)
             pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS)
 
-        if not pool:
-            print("nothing fix_prob")
-            new_timetable[rasp0] = old_slot
-            return data
-
-        slot = random.choice(tuple(pool))
-
         self.untax_rrule_in_matrix3D(rooms_occupied[old_slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
         self.untax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+        self.untax_rasp_nasts(old_slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
-        if rasp0.totalGroups > 1:
-            key = str(rasp0.subjectId) + str(rasp0.type)
-            if key in groups_occupied and slot in groups_occupied[key]:
-                groups_occupied[key][slot] -= 1
+        # This takes a while
+        pool_list = list(pool)
+        random.shuffle(pool_list)
+        the_slot = None
+        BEFORE_GRADE = rasp_grades[rasp0.id]
+        old_rrules = rasp_rrules[rasp0.id].copy()
+        for slot in pool_list:
+            NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
+            NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
+            until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
+            NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
 
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 0:
-                    continue
+            rasp_rrules[rasp0.id]["DTSTART"] = NEW_DTSTART
+            rasp_rrules[rasp0.id]["UNTIL"] = NEW_UNTIL
+            rasp_rrules[rasp0.id]["all_dates"] = time_api.get_rrule_dates(rasp0.rrule, NEW_DTSTART, NEW_UNTIL)
 
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 0:
-                    continue
+            self.tax_rrule_in_matrix3D(rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+            self.tax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+            self.tax_rasp_nasts(slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
-            rasp_mandatory = True if sem_id in rasp0.mandatory_in_semesterIds else False
-            if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                self.untax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-            else:
-                self.nast_untax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp0, slot.hour, rasp_rrules[rasp0.id]["all_dates"])
+            grades = self.grade_rasp(rooms_occupied, profs_occupied, nasts_occupied, rasp0, slot, rasp_rrules)
+
+            self.untax_rrule_in_matrix3D(rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+            self.untax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+            self.untax_rasp_nasts(slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
+
+            chance = random.randint(1,100)
+            bigger = True if chance > 30 else False
+            equal = True if not bigger else False
+            if bigger and grades["totalScore"] > BEFORE_GRADE["totalScore"]:
+                the_slot = slot
+                break
+            elif equal and grades["totalScore"] >= BEFORE_GRADE["totalScore"]:
+                the_slot = slot
+                break
+
+        if not the_slot:
+            print("nothing find better")
+            new_timetable[rasp0] = old_slot
+            rasp_rrules[rasp0.id] = old_rrules
+            self.tax_rrule_in_matrix3D(rooms_occupied[old_slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+            self.tax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+            self.tax_rasp_nasts(old_slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
+            return data
+
+        slot = the_slot
+        BEFORE_GRADE = rasp_grades[rasp0.id].copy()
 
         NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
         NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
@@ -650,200 +623,13 @@ class Optimizer:
 
         self.tax_rrule_in_matrix3D(rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
         self.tax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
+        self.tax_rasp_nasts(slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
-        if rasp0.totalGroups > 1:
-            key = str(rasp0.subjectId) + str(rasp0.type)
-            if key not in groups_occupied:
-                groups_occupied[key] = {}
-            if slot not in groups_occupied[key]:
-                groups_occupied[key][slot] = 0
-            groups_occupied[key][slot]+=1
-
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 1:
-                    continue
-
-            rasp_mandatory = True if sem_id in rasp0.mandatory_in_semesterIds else False
-            if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-            else:
-                self.nast_tax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp0, slot.hour, rasp_rrules[rasp0.id]["all_dates"])
-
-        data["grade"] = {k : v - rasp_grades[rasp0.id][k] for k,v in data["grade"].items()}
+        data["grade"] = {k : round(v - rasp_grades[rasp0.id][k], 2) for k,v in data["grade"].items()}
         rasp_grades[rasp0.id] = self.grade_rasp(rooms_occupied, profs_occupied, nasts_occupied, rasp0, slot, rasp_rrules)
-        data["grade"] = {k : v + rasp_grades[rasp0.id][k] for k,v in data["grade"].items()}
+        data["grade"] = {k : round(v + rasp_grades[rasp0.id][k], 2) for k,v in data["grade"].items()}
 
         new_timetable[rasp0] = slot
         data["timetable"] = new_timetable
 
-        return data
-
-
-    def find_correct_place(self, data):
-        old_timetable = data["timetable"]
-        rasp_rrules = data["rasp_rrules"]
-        rooms_occupied = data["rooms_occupied"]
-        profs_occupied = data["profs_occupied"]
-        nasts_occupied = data["nasts_occupied"]
-        optionals_occupied = data["optionals_occupied"]
-        groups_occupied = data["groups_occupied"]
-        rasp_grades = data["rasp_grades"]
-
-        problematic_rasps = []
-        for rasp, _ in old_timetable.items():
-            if rasp_grades[rasp.id]["totalScore"] < 0:
-                problematic_rasps.append(rasp)
-
-        if not problematic_rasps:
-            return data
-
-        new_timetable = old_timetable.copy()
-
-        # Choose a random problematic rasp
-        rasp0 = random.choice(problematic_rasps)
-        old_slot = new_timetable[rasp0]
-
-        new_timetable.pop(rasp0, 0)
-
-        all_avs = self.free_slots.copy()
-
-        taken_terms = set()
-        for rasp, (room_id, _, _, _) in old_timetable.items():
-            for week, day, hour in rasp_rrules[rasp.id]["all_dates"]:
-                taken_terms |= {(room_id, week, day, hour+i) for i in range(rasp.duration)}
-        all_avs -= taken_terms
-
-        nonavs = set()
-        for (room_id, week, day, hour) in all_avs:
-            if any((room_id, week, day, hour+i) not in all_avs for i in range(1, rasp0.duration)):
-                   nonavs.add((room_id, week, day, hour))
-        all_avs -= nonavs
-
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        pool = set()
-        if rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
-            dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
-            for dtstart_weekday in dtstart_weekdays:
-                given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
-
-
-                pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and rasp0.duration + slot.hour < self.NUM_HOURS \
-                            and all(profs_occupied[rasp0.professorId][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and all(rooms_occupied[slot.room_id][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and bool(self.students_estimate[rasp0.id] - self.room_capacity[slot.room_id]>=0) \
-                            and ((slot.room_id in self.computer_rooms and rasp0.needsComputers) or \
-                                 (slot.room_id not in self.computer_rooms and not rasp0.needsComputers)) \
-                            and all(all(nasts_occupied[sem_id][week, day, hour:(hour+rasp0.duration)]==0) for sem_id in sem_ids))
-
-        elif rasp0.random_dtstart_weekday and rasp0.fixed_hour:
-            dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
-            for dtstart_weekday in dtstart_weekdays:
-                given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
-                pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS \
-                            and all(profs_occupied[rasp0.professorId][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and all(rooms_occupied[slot.room_id][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and bool(self.students_estimate[rasp0.id] - self.room_capacity[slot.room_id]>=0) \
-                            and ((slot.room_id in self.computer_rooms and rasp0.needsComputers) or \
-                                 (slot.room_id not in self.computer_rooms and not rasp0.needsComputers)) \
-                            and all(all(nasts_occupied[sem_id][week, day, hour:(hour+rasp0.duration)]==0) for sem_id in sem_ids))
-
-        elif not rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
-            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
-            given_week, given_day, _ = time_api.date_to_index(dtstart)
-            pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and rasp0.duration + slot.hour < self.NUM_HOURS \
-                            and all(profs_occupied[rasp0.professorId][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and all(rooms_occupied[slot.room_id][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and bool(self.students_estimate[rasp0.id] - self.room_capacity[slot.room_id]>=0) \
-                            and ((slot.room_id in self.computer_rooms and rasp0.needsComputers) or \
-                                 (slot.room_id not in self.computer_rooms and not rasp0.needsComputers)) \
-                            and all(all(nasts_occupied[sem_id][week, day, hour:(hour+rasp0.duration)]==0) for sem_id in sem_ids))
-
-        elif not rasp0.random_dtstart_weekday and rasp0.fixed_hour:
-            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
-            given_week, given_day, given_hour = time_api.date_to_index(dtstart)
-            pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour and rasp0.duration + slot.hour < self.NUM_HOURS \
-                            and all(profs_occupied[rasp0.professorId][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and all(rooms_occupied[slot.room_id][slot.week, slot.day, slot.hour:(slot.hour+rasp0.duration)]==0) \
-                            and bool(self.students_estimate[rasp0.id] - self.room_capacity[slot.room_id]>=0) \
-                            and ((slot.room_id in self.computer_rooms and rasp0.needsComputers) or \
-                                 (slot.room_id not in self.computer_rooms and not rasp0.needsComputers)) \
-                            and all(all(nasts_occupied[sem_id][week, day, hour:(hour+rasp0.duration)]==0) for sem_id in sem_ids))
-
-        if not pool:
-            #print("nothing find correct")
-            new_timetable[rasp0] = old_slot
-            return data
-        print("found correct")
-
-        slot = random.choice(tuple(pool))
-        #print("BEFORE GRADE: ", rasp0.id, rasp_grades[rasp0.id])
-
-        # Perhaps I'm not taxing/untaxing correctly. Maybe "all_dates" aren't correctly being refreshed.
-        self.untax_rrule_in_matrix3D(rooms_occupied[old_slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-        self.untax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-
-        if rasp0.totalGroups > 1:
-            key = str(rasp0.subjectId) + str(rasp0.type)
-            if key in groups_occupied and slot in groups_occupied[key]:
-                groups_occupied[key][slot] -= 1
-
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 0:
-                    continue
-
-            rasp_mandatory = True if sem_id in rasp0.mandatory_in_semesterIds else False
-            if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                self.untax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-            else:
-                self.nast_untax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp0, slot.hour, rasp_rrules[rasp0.id]["all_dates"])
-
-        NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
-        NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
-        until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
-        NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
-
-        rasp_rrules[rasp0.id]["DTSTART"] = NEW_DTSTART
-        rasp_rrules[rasp0.id]["UNTIL"] = NEW_UNTIL
-        rasp_rrules[rasp0.id]["all_dates"] = time_api.get_rrule_dates(rasp0.rrule, NEW_DTSTART, NEW_UNTIL)
-
-        self.tax_rrule_in_matrix3D(rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-        self.tax_rrule_in_matrix3D(profs_occupied[rasp0.professorId], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-
-        if rasp0.totalGroups > 1:
-            key = str(rasp0.subjectId) + str(rasp0.type)
-            if key not in groups_occupied:
-                groups_occupied[key] = {}
-            if slot not in groups_occupied[key]:
-                groups_occupied[key][slot] = 0
-            groups_occupied[key][slot]+=1
-
-        sem_ids = rasp0.mandatory_in_semesterIds + rasp0.optional_in_semesterIds
-        for sem_id in sem_ids:
-            if rasp0.totalGroups > 1:
-                key = str(rasp0.subjectId) + str(rasp0.type)
-                if key in groups_occupied and slot in groups_occupied[key] and groups_occupied[key][slot] > 1:
-                    continue
-
-            rasp_mandatory = True if sem_id in rasp0.mandatory_in_semesterIds else False
-            if rasp_mandatory: #or not PARALLEL_OPTIONALS_ALLOWED:
-                self.tax_rrule_in_matrix3D(nasts_occupied[sem_id], rasp0, rasp_rrules[rasp0.id]["all_dates"])
-            else:
-                self.nast_tax_rrule_optional_rasp(optionals_occupied, nasts_occupied[sem_id], rasp0, slot.hour, rasp_rrules[rasp0.id]["all_dates"])
-
-        data["grade"] = {k : v - rasp_grades[rasp0.id][k] for k,v in data["grade"].items()}
-        rasp_grades[rasp0.id] = self.grade_rasp(rooms_occupied, profs_occupied, nasts_occupied, rasp0, slot, rasp_rrules)
-        data["grade"] = {k : v + rasp_grades[rasp0.id][k] for k,v in data["grade"].items()}
-
-        new_timetable[rasp0] = slot
-        data["timetable"] = new_timetable
-
-        #Nasts are being (re)calculated badly badly
-        print(data["grade"])
-        #print("AFTER GRADE: ", rasp0.id, rasp_grades[rasp0.id])
         return data

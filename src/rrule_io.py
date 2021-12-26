@@ -16,6 +16,7 @@ winter = False
 rasps = rasp_api.get_rasps_by_season(winter = winter)
 nasts = seme_api.get_nasts_all_semesters(rasps, winter)
 students_estimate = seme_api.get_students_per_rasp_estimate(nasts)
+semesters_info = seme_api.get_winter_semesters_dict() if winter else seme_api.get_summer_semesters_dict()
 
 starting_rooms = room_api.get_rooms()
 room_capacity = room_api.get_rooms_capacity(starting_rooms)
@@ -40,10 +41,19 @@ data = {
         "computer_rooms": computer_rooms,
         "free_slots": free_slots,
         "starting_slots": starting_slots,
+        "semesters_info": semesters_info,
         "rooms_occupied": rooms_occupied,
         "profs_occupied": profs_occupied
 }
 
 o = Optimizer(data)
-sample = o.random_sample(5)
-o.iterate(sample)
+
+for _ in range(5):
+    try:
+        sample = o.random_sample(1)
+        #o.iterate(sample, population_cap=1)
+        sample = o.iterate_no_parallel(sample, population_cap=1) #this one is much faster actually
+        if sample[0]["grade"]["totalScore"] == 0:
+            pass
+    except KeyboardInterrupt:
+        continue

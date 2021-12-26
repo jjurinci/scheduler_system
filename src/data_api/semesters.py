@@ -32,6 +32,18 @@ def get_summer_semesters():
     return semesters
 
 
+def get_winter_semesters_dict():
+    semesters = get_semesters()
+    semesters = {sem.id : sem for sem in semesters if sem.season == "W"}
+    return semesters
+
+
+def get_summer_semesters_dict():
+    semesters = get_semesters()
+    semesters = {sem.id:sem for sem in semesters if sem.season == "S"}
+    return semesters
+
+
 def get_nasts_one_semester(subjects, mandatory, optionals=1):
     if (not subjects and optionals) or optionals<0:
         return frozenset()
