@@ -9,7 +9,7 @@ def get_professors():
 
     typed_professors = []
     for prof in professors:
-        prof["user_id"] = None
+        prof["userId"] = None
         prof = Professor(**{field: prof[field] for field in Professor._fields})
         typed_professors.append(prof)
 
@@ -18,7 +18,7 @@ def get_professors():
 
 def get_professors_constraints():
     with open("database/constraints/professor_available.json", "r") as fp:
-        prof_available = json.load(fp)["professor_available"]
+        prof_available = json.load(fp)["professorAvailable"]
     return prof_available
 
 
@@ -29,7 +29,7 @@ def get_professors_by_ids(professor_ids):
 
 
 def get_professors_in_rasps(rasps):
-    professor_ids = [rasp.professor_id for rasp in rasps]
+    professor_ids = [rasp.professorId for rasp in rasps]
     return get_professors_by_ids(professor_ids)
 
 
@@ -38,7 +38,7 @@ def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors_i
     professor_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS,5,NUM_HOURS), dtype=np.uint8))
     done_professors = {}
     for avail in prof_constraints:
-        prof_id = avail["professor_id"]
+        prof_id = avail["professorId"]
         if prof_id not in professors_ids:
             continue
 

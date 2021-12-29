@@ -20,7 +20,7 @@ def get_rasps():
 
     rasp_groups = {}
     for rasp in rasps:
-        key = (rasp["subject_id"], rasp["type"])
+        key = (rasp["subjectId"], rasp["type"])
         if key not in rasp_groups:
             rasp_groups[key] = 1
         else:
@@ -28,14 +28,14 @@ def get_rasps():
 
     typed_rasps = []
     for rasp in rasps:
-        subject = subjects_dict[rasp["subject_id"]]
-        total_groups_key = (rasp["subject_id"], rasp["type"])
+        subject = subjects_dict[rasp["subjectId"]]
+        total_groups_key = (rasp["subjectId"], rasp["type"])
 
         rasp["duration"] = int(rasp["duration"])
-        rasp["mandatory_in_semester_ids"] = subject.mandatory_in_semester_ids
-        rasp["optional_in_semester_ids"] = subject.optional_in_semester_ids
-        rasp["needs_computers"] = True if rasp["needs_computers"] == "1" else False
-        rasp["total_groups"] = rasp_groups[total_groups_key]
+        rasp["mandatory_in_semesterIds"] = subject.mandatory_in_semesterIds
+        rasp["optional_in_semesterIds"] = subject.optional_in_semesterIds
+        rasp["needsComputers"] = True if rasp["needsComputers"] == "1" else False
+        rasp["totalGroups"] = rasp_groups[total_groups_key]
         rasp["random_dtstart_weekday"] = True if rasp["random_dtstart_weekday"] else False
         rrule = rasp["rrule"]
         rrule = rrule[1:-1].replace("\\n", "\n")
@@ -68,9 +68,9 @@ def get_rasps_by_season(winter = False):
 
     season_rasps = []
     for rasp in rasps:
-        subject_id = rasp.subject_id
-        semester_ids = subjects_dict[subject_id].mandatory_in_semester_ids
-        semester_ids += subjects_dict[subject_id].optional_in_semester_ids
+        subject_id = rasp.subjectId
+        semester_ids = subjects_dict[subject_id].mandatory_in_semesterIds
+        semester_ids += subjects_dict[subject_id].optional_in_semesterIds
 
         for semester_id in semester_ids:
             semester = semesters_dict[semester_id]

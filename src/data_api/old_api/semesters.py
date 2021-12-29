@@ -10,10 +10,10 @@ def get_semesters():
 
     typed_semesters = []
     for semester in semesters:
-        semester["num_semester"] = int(semester["num_semester"])
-        semester["has_optional_subjects"] = int(semester["has_optional_subjects"])
-        semester["num_students"] = int(semester["num_students"])
-        semester["user_id"] = None
+        semester["numSemester"] = int(semester["numSemester"])
+        semester["hasOptionalSubjects"] = int(semester["hasOptionalSubjects"])
+        semester["numStudents"] = int(semester["numStudents"])
+        semester["userId"] = None
         semester = Semester(**{field: semester[field] for field in Semester._fields})
         typed_semesters.append(semester)
 
@@ -78,18 +78,19 @@ def get_nasts_all_semesters(rasps, winter):
 
     nasts = {}
     for semester in semesters:
-        sem_id, num_students = semester.id, semester.num_students
-        num_semester = semester.num_semester
-        has_optional_subjects = semester.has_optional_subjects
+        sem_id, num_students = semester.id, semester.numStudents
+        sem_name, num_semester = semester.name, semester.numSemester
+        has_optional_subjects = semester.hasOptionalSubjects
 
-        filtered_subjects = [sub for sub in subjects if sem_id in sub.mandatory_in_semester_ids or sem_id in sub.optional_in_semester_ids]
-        mandatory = {sub.id : True if sem_id in sub.mandatory_in_semester_ids else False for sub in filtered_subjects}
+        #filtered_subjects = list(filter(lambda s: sem_id in s.semesterIds, subjects))
+        filtered_subjects = [sub for sub in subjects if sem_id in sub.mandatory_in_semesterIds or sem_id in sub.optional_in_semesterIds]
+        mandatory = {sub.id : True if sem_id in sub.mandatory_in_semesterIds else False for sub in filtered_subjects}
         q = get_nasts_one_semester(filtered_subjects, mandatory, optionals=has_optional_subjects)
 
         if q is None:
             q = frozenset(frozenset())
 
-        nasts[(sem_id, num_semester, num_students)] = q
+        nasts[(sem_id, sem_name, num_semester, num_students)] = q
     return nasts
 
 
@@ -99,13 +100,10 @@ def get_students_per_rasp_estimate(nasts):
         if not the_nasts:
             continue
 
-        num_students = semester[2]
+        num_students = semester[3]
         stud_per_nast = num_students/len(the_nasts)
         for nast in the_nasts:
             margin = {rasp.id: stud_per_nast for rasp in nast}
             students_estimate.update(margin)
-
-    for key in students_estimate:
-        students_estimate[key] = round(students_estimate[key], 2)
 
     return students_estimate

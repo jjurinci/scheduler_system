@@ -11,8 +11,8 @@ def get_rooms():
     typed_rooms = []
     for room in rooms:
         room["capacity"] = int(room["capacity"])
-        room["has_computers"] = True if room["has_computers"]=="1" else False
-        room["user_id"] = None
+        room["hasComputers"] = True if room["hasComputers"]=="1" else False
+        room["userId"] = None
         room = Classroom(**{field: room[field] for field in Classroom._fields})
         typed_rooms.append(room)
 
@@ -21,7 +21,7 @@ def get_rooms():
 
 def get_rooms_constraints():
     with open("database/constraints/classroom_available.json", "r") as fp:
-        rooms_available = json.load(fp)["classroom_available"]
+        rooms_available = json.load(fp)["classroomAvailable"]
     return rooms_available
 
 
@@ -30,7 +30,7 @@ def get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, room_available, rooms):
     done_rooms = {}
 
     for avail in room_available:
-        room_id = avail["classroom_id"]
+        room_id = avail["classroomId"]
         done_rooms[room_id] = True
 
         monday_terms    = transform_room_time(avail["monday"])
@@ -115,7 +115,7 @@ def get_rooms_by_ids(room_ids):
 
 
 def get_computer_rooms(rooms):
-    return {room.id for room in rooms if room.has_computers}
+    return {room.id for room in rooms if room.hasComputers}
 
 
 def get_rooms_capacity(rooms):

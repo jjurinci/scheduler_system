@@ -12,7 +12,7 @@ timeblocks = time_api.get_day_structure()
 hourmin_to_index, index_to_hourmin = time_api.get_hour_index_structure(timeblocks)
 NUM_HOURS = len(timeblocks)
 
-winter = False
+winter = True
 rasps = rasp_api.get_rasps_by_season(winter = winter)
 nasts = seme_api.get_nasts_all_semesters(rasps, winter)
 students_estimate = seme_api.get_students_per_rasp_estimate(nasts)
@@ -26,7 +26,7 @@ free_slots = room_api.get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, rooms_constrain
 rooms_occupied = room_api.get_rooms_occupied(NUM_WEEKS, NUM_HOURS, free_slots, rasps)
 starting_slots = room_api.generate_starting_slots(rooms_occupied, NUM_HOURS)
 
-starting_profs_ids = set(rasp.professorId for rasp in rasps)
+starting_profs_ids = set(rasp.professor_id for rasp in rasps)
 starting_profs = prof_api.get_professors_by_ids(starting_profs_ids)
 profs_constraints = prof_api.get_professors_constraints()
 profs_occupied = prof_api.get_professors_occupied(NUM_WEEKS, NUM_HOURS, profs_constraints, starting_profs_ids)
@@ -53,7 +53,7 @@ for _ in range(5):
         sample = o.random_sample(1)
         #o.iterate(sample, population_cap=1)
         sample = o.iterate_no_parallel(sample, population_cap=1) #this one is much faster actually
-        if sample[0]["grade"]["totalScore"] == 0:
-            pass
+        if sample[0]["grades"]["all"]["totalScore"] == 0:
+            break
     except KeyboardInterrupt:
         continue

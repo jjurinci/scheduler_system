@@ -12,7 +12,7 @@ def get_subjects():
         subject["rasps"] = None
         subject["mandatory_in_semester_ids"] = tuple(subject["mandatory_in_semester_ids"]) if subject["mandatory_in_semester_ids"] != [''] else ()
         subject["optional_in_semester_ids"] = tuple(subject["optional_in_semester_ids"]) if subject["optional_in_semester_ids"] != [''] else ()
-        subject["user_id"] = None
+        subject["userId"] = None
         subject = Subject(**{field: subject[field] for field in Subject._fields})
         typed_subjects.append(subject)
 
@@ -30,18 +30,18 @@ def get_subject_by_id(subject_id):
 def get_subjects_with_rasps(rasps):
     subject_rasps = defaultdict(lambda: defaultdict(set))
     for rasp in rasps:
-        subject_rasps[rasp.subject_id][rasp.type].add(rasp)
+        subject_rasps[rasp.subjectId][rasp.type].add(rasp)
 
     subjects, seen = [], {}
     for rasp in rasps:
-        if rasp.subject_id in seen:
+        if rasp.subjectId in seen:
             continue
 
-        seen[rasp.subject_id] = True
+        seen[rasp.subjectId] = True
 
-        sub = get_subject_by_id(rasp.subject_id)
+        sub = get_subject_by_id(rasp.subjectId)
         if sub != -1:
             subject = Subject(sub.id, sub.name, sub.mandatory_in_semester_ids,
-                              sub.optional_in_semester_ids, sub.user_id, subject_rasps[sub.id])
+                              sub.optional_in_semester_ids, sub.userId, subject_rasps[sub.id])
             subjects.append(subject)
     return subjects

@@ -7,7 +7,7 @@ def get_faculties():
 
     typed_faculties = []
     for faculty in faculties:
-        faculty["user_id"] = None
+        faculty["userId"] = None
         faculty = [Faculty(**{field: fac[field] for field in Faculty._fields}) for fac in faculties]
         typed_faculties.append(faculty)
 

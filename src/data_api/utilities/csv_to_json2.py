@@ -14,7 +14,7 @@ def csv_to_dict(path, name):
             else:
                 new_row = []
                 for i, val in enumerate(row):
-                    if "_ids" in keys[i]:
+                    if "Ids" in keys[i]:
                         new_row.append(val.split(","))
                     elif val == "":
                         new_row.append(None)
@@ -45,7 +45,7 @@ def constraints_csv_to_dict(path, name):
             else:
                 new_row = []
                 for i, val in enumerate(row):
-                    if val == "F" or val == "T" or "_id" in keys[i]:
+                    if val == "F" or val == "T" or "Id" in keys[i]:
                         new_row.append(val)
                     else:
                         all_times = []
@@ -60,32 +60,26 @@ def constraints_csv_to_dict(path, name):
 
         return json_dict
 
-university               = csv_to_dict("database/input/csvs/universities.csv", "university")
-faculties                = csv_to_dict("database/input/csvs/faculties.csv",  "faculties")
-study_programmes         = csv_to_dict("database/input/csvs/study_programmes.csv",  "study_programmes")
-study_programmes_modules = csv_to_dict("database/input/csvs/study_programmes_modules.csv",  "study_programmes_modules")
-semesters                = csv_to_dict("database/input/csvs/semesters.csv",  "semesters")
-subjects                 = csv_to_dict("database/input/csvs/subjects.csv",   "subjects")
-rasps                    = csv_to_dict("database/input/csvs/rasps.csv",      "rasps")
-classrooms               = csv_to_dict("database/input/csvs/classrooms.csv", "classrooms")
-professors               = csv_to_dict("database/input/csvs/professors.csv", "professors")
-day_structure            = csv_to_dict("database/input/csvs/day_structure.csv", "day_structure")
-start_end_year           = csv_to_dict("database/input/csvs/start_end_year.csv", "start_end_year")
+faculties          = csv_to_dict("database/input/csvs/faculties.csv",  "faculties")
+semesters          = csv_to_dict("database/input/csvs/semesters.csv",  "semesters")
+professors         = csv_to_dict("database/input/csvs/professors.csv", "professors")
+classrooms         = csv_to_dict("database/input/csvs/classrooms.csv", "classrooms")
+subjects           = csv_to_dict("database/input/csvs/subjects.csv",   "subjects")
+rasps              = csv_to_dict("database/input/csvs/rasps.csv",      "rasps")
+day_structure      = csv_to_dict("database/input/csvs/day_structure.csv", "day_structure")
+start_end_year     = csv_to_dict("database/input/csvs/start_end_year.csv", "start_end_year")
 
-dict_to_json("database/input/university.json",  university)
 dict_to_json("database/input/faculties.json",  faculties)
-dict_to_json("database/input/study_programmes.json",  study_programmes)
-dict_to_json("database/input/study_programmes_modules.json",  study_programmes_modules)
 dict_to_json("database/input/semesters.json",  semesters)
+dict_to_json("database/input/professors.json", professors)
+dict_to_json("database/input/classrooms.json",  classrooms)
 dict_to_json("database/input/subjects.json",   subjects)
 dict_to_json("database/input/rasps.json",      rasps)
-dict_to_json("database/input/classrooms.json",  classrooms)
-dict_to_json("database/input/professors.json", professors)
 dict_to_json("database/input/day_structure.json", day_structure)
 dict_to_json("database/input/start_end_year.json", start_end_year)
 
-classroom_available = constraints_csv_to_dict("database/constraints/csvs/classroom_available.csv", "classroom_available")
-professor_available = constraints_csv_to_dict("database/constraints/csvs/professor_available.csv", "professor_available")
+classroom_available = constraints_csv_to_dict("database/constraints/csvs/classroom_available.csv", "classroomAvailable")
+professor_available = constraints_csv_to_dict("database/constraints/csvs/professor_available.csv", "professorAvailable")
 
 dict_to_json("database/constraints/classroom_available.json", classroom_available)
 dict_to_json("database/constraints/professor_available.json", professor_available)
