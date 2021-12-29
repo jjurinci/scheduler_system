@@ -1,3 +1,4 @@
+import pickle
 import data_api.classrooms     as room_api
 import data_api.professors     as prof_api
 import data_api.rasps          as rasp_api
@@ -47,13 +48,20 @@ data = {
 }
 
 o = Optimizer(data)
-
+sample = []
+got_zero = False
 for _ in range(5):
     try:
         sample = o.random_sample(1)
-        #o.iterate(sample, population_cap=1)
         sample = o.iterate_no_parallel(sample, population_cap=1) #this one is much faster actually
         if sample[0]["grades"]["all"]["totalScore"] == 0:
+            got_zero = True
             break
     except KeyboardInterrupt:
         continue
+
+if got_zero:
+    name = "zero_timetable.pickle"
+    print(f"Saving sample to {name}")
+    with open(name, "wb") as p:
+        pickle.dump(sample, p)
