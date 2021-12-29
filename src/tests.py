@@ -7,6 +7,8 @@ import data_api.rasps          as rasp_api
 import data_api.professors     as prof_api
 from collections import defaultdict
 
+#TODO: Check if rrule actually has correct dates (DTSTART, UNTIL, ALL_DATES)
+
 path = "saved_timetables/zero_timetable.pickle"
 
 with open(path, "rb") as p:
@@ -17,7 +19,6 @@ with open(path, "rb") as p:
     NUM_WEEKS = 17
     NUM_HOURS = 16
     semesters_info = seme_api.get_winter_semesters_dict() if winter else seme_api.get_summer_semesters_dict()
-    winter = True
     rasps = rasp_api.get_rasps_by_season(winter = winter)
     nasts = seme_api.get_nasts_all_semesters(rasps, winter)
     students_estimate = seme_api.get_students_per_rasp_estimate(nasts)
@@ -210,6 +211,3 @@ all_rasps_have_dates(data)
 all_dates_correct_start(data)
 no_mandatory_optional_collisions(data)
 check_grade_is_0(data)
-
-print(data["timetable"])
-print(data.keys())

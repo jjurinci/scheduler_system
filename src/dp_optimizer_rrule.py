@@ -49,7 +49,7 @@ class Optimizer:
         for i in range(N):
             print(i)
             all_avs = self.free_slots.copy()
-            timetable, rasp_rrules = {}, {}
+            timetable, rasp_rrules, possible_rrules = {}, {}, {}
 
             rooms_occupied = {k:v.copy() for k,v in self.rooms_occupied.items()}
             profs_occupied = {k:v.copy() for k,v in self.profs_occupied.items()}
@@ -80,6 +80,29 @@ class Optimizer:
                 dtstart = rrule_obj._dtstart
                 until = rrule_obj._until
                 dtstart_weekdays = time_api.all_dtstart_weekdays(dtstart) if rasp.random_dtstart_weekday else []
+
+                # At most 5 starting days defined by (week, day). Since I don't allow hour manipulation I can leave out the hour
+                possible_rrules[rasp.id] = {}
+                if rasp.random_dtstart_weekday:
+                    for dtstart_weekday in dtstart_weekdays:
+                        given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
+                        key = (given_week, given_day)
+                        rrule_obj = {"all_dates": time_api.get_rrule_dates(rasp.rrule, dtstart_weekday, until)}
+                        rrule_obj["all_dates"] = list(rrule_obj["all_dates"])
+                        for i, val in enumerate(rrule_obj["all_dates"]):
+                            rrule_obj["all_dates"][i] = (val[0], val[1])
+                        possible_rrules[rasp.id][key] = rrule_obj
+
+                elif not rasp.random_dtstart_weekday:
+                    rrule_obj = {"all_dates": time_api.get_rrule_dates(rasp.rrule, dtstart, until)}
+                    rrule_obj["all_dates"] = list(rrule_obj["all_dates"])
+                    for i, val in enumerate(rrule_obj["all_dates"]):
+                        rrule_obj["all_dates"][i] = (val[0], val[1])
+                    possible_rrules[rasp.id][key] = rrule_obj
+
+                dtstart_weekdays = [time_api.date_to_index(dtstart_) for dtstart_ in dtstart_weekdays]
+                dtstart = time_api.date_to_index(dtstart)
+                until = time_api.date_to_index(until)
                 rasp_rrules[rasp.id] = {"DTSTART": dtstart, "UNTIL": until, "dtstart_weekdays":dtstart_weekdays, "all_dates":[]}
 
             for rasp in self.rasps:
@@ -91,22 +114,24 @@ class Optimizer:
 
                     if rasp.random_dtstart_weekday and not rasp.fixed_hour:
                         dtstart_weekdays = rasp_rrules[rasp.id]["dtstart_weekdays"]
-                        for dtstart_weekday in dtstart_weekdays:
-                            given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
+                        for given_week, given_day, _ in dtstart_weekdays:
+                            #given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
                             pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day)
 
                     elif rasp.random_dtstart_weekday and rasp.fixed_hour:
                         dtstart_weekdays = rasp_rrules[rasp.id]["dtstart_weekdays"]
-                        for dtstart_weekday in dtstart_weekdays:
-                            given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
+                        for given_week, given_day, given_hour in dtstart_weekdays:
+                            #given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
                             pool |= set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour)
 
                     elif not rasp.random_dtstart_weekday and not rasp.fixed_hour:
+                        #given_week, given_day, _ = time_api.date_to_index(DTSTART)
                         given_week, given_day, _ = time_api.date_to_index(DTSTART)
                         pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day)
 
                     elif not rasp.random_dtstart_weekday and rasp.fixed_hour:
-                        given_week, given_day, given_hour = time_api.date_to_index(DTSTART)
+                        #given_week, given_day, given_hour = time_api.date_to_index(DTSTART)
+                        given_week, given_day, given_hour = DTSTART
                         pool = set(slot for slot in all_avs if slot.week == given_week and slot.day == given_day and slot.hour == given_hour)
 
                     try_slot = random.choice(tuple(pool))
@@ -114,16 +139,22 @@ class Optimizer:
                     if try_slot.hour + rasp.duration < self.NUM_HOURS:
                         slot = try_slot
 
-                NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
+                #NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
+                #NEW_UNTIL = rasp_rrules[rasp.id]["UNTIL"]
+                #until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
+                #NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
+                NEW_DTSTART = (slot.week, slot.day, slot.hour)
                 NEW_UNTIL = rasp_rrules[rasp.id]["UNTIL"]
-                until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
-                NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
+
+                key = (slot.week, slot.day)
+                all_dates = [(week, day, slot.hour) for week, day in possible_rrules[rasp.id][key]["all_dates"]]
 
                 all_avs.remove(slot)
 
                 rasp_rrules[rasp.id]["DTSTART"] = NEW_DTSTART
                 rasp_rrules[rasp.id]["UNTIL"] = NEW_UNTIL
-                rasp_rrules[rasp.id]["all_dates"] = time_api.get_rrule_dates(rasp.rrule, NEW_DTSTART, NEW_UNTIL)
+                #rasp_rrules[rasp.id]["all_dates"] = time_api.get_rrule_dates(rasp.rrule, NEW_DTSTART, NEW_UNTIL)
+                rasp_rrules[rasp.id]["all_dates"] = all_dates
 
                 self.tax_rrule_in_rooms(slot, rooms_occupied[slot.room_id], rasp, rasp_rrules[rasp.id]["all_dates"], grades)
                 self.tax_rrule_in_profs(slot, profs_occupied[rasp.professor_id], rasp, rasp_rrules[rasp.id]["all_dates"], grades)
@@ -139,7 +170,10 @@ class Optimizer:
                     "nasts_occupied":dict(**nasts_occupied),
                     "optionals_occupied": dict(**optionals_occupied),
                     "groups_occupied": groups_occupied,
-                    "rasp_rrules": rasp_rrules}
+                    "rasp_rrules": rasp_rrules,
+                    "possible_rrules": possible_rrules,
+                    "unsuccessful_rasps": set(),
+                    "converged": False}
             sample.append(data)
 
         return sample
@@ -228,7 +262,6 @@ class Optimizer:
                 self.update_grades_nasts(sem_id, rasp, punish, grades, plus=True)
 
             optionals_occupied[week, day, hour:(hour + rasp.duration)] += 1
-        #self.tax_rrule_in_matrix3D(optionals_occupied, rasp, rrule_dates)
 
 
     def untax_rrule_in_matrix3D(self, matrix3D, rasp, rrule_dates):
@@ -361,12 +394,10 @@ class Optimizer:
                    for week, day, hour in rrule_dates)
 
 
-    #Just for testing
     def iterate_no_parallel(self, sample, generations=1000, starting_generation=1, population_cap=5):
         BEST_SAMPLE = (sample[0]["grades"]["all"].copy(), sample[0]["timetable"].copy())
         print(starting_generation-1, BEST_SAMPLE[0])
 
-        fruitless_attempts = 0
         for generation in tqdm(range(starting_generation, starting_generation+generations)):
                 #print("SAMPLE: ", self.get_size(sample) / 10**6, "MB.")
                 the_samples = [s for s in sample]
@@ -378,36 +409,30 @@ class Optimizer:
                 sample.sort(key=lambda x: x["grades"]["all"]["totalScore"], reverse=True)
                 sample = sample[0:population_cap]
 
-                if sample[0]["grades"]["all"]["totalScore"] <= BEST_SAMPLE[0]["totalScore"]:
-                    fruitless_attempts += 1
-
                 if sample[0]["grades"]["all"]["totalScore"] > BEST_SAMPLE[0]["totalScore"]:
-                    fruitless_attempts = 0
                     BEST_SAMPLE = (sample[0]["grades"]["all"].copy() , sample[0]["timetable"].copy())
                     tqdm.write(f"{generation}, {BEST_SAMPLE[0]}")
 
                 if sample[0]["grades"]["all"]["totalScore"] == 0:
                     return sample
 
-                if fruitless_attempts == 40:
-                    print("40 fruitless attempts - Exiting.")
+                elif sample[0]["converged"]:
+                    print("No 0 score solution.")
                     return sample
-
 
         return sample
 
 
-    def get_slots(self, rasp, rooms_occupied, week, day, hour = None):
+    def get_slots(self, rasp, old_slot, rasp_rrules, possible_rrules, rooms_occupied, profs_occupied, nasts_occupied, week, day, hour = None):
         pool = set()
         for room_id in rooms_occupied:
-            if hour and np.all(rooms_occupied[room_id][week, day, hour:(hour+rasp.duration)]==0):
+            if hour:
                 pool.add(Slot(room_id, week, day, hour))
             elif not hour:
                 for hr in range(self.NUM_HOURS):
                     if hr+rasp.duration >= self.NUM_HOURS:
                         break
-                    if np.all(rooms_occupied[room_id][week, day, hr:(hr+rasp.duration)]==0):
-                        pool.add(Slot(room_id, week, day, hr))
+                    pool.add(Slot(room_id, week, day, hr))
         return pool
 
 
@@ -420,54 +445,26 @@ class Optimizer:
         optionals_occupied = data["optionals_occupied"]
         groups_occupied = data["groups_occupied"]
         grades = data["grades"]
+        possible_rrules = data["possible_rrules"]
 
-        #TODO: Memoization for which rasps have failed, skip them to try others
-        #TODO: If all rasps have been tried without success, then there is no further solution
-        #TODO: Once it didn't save a 0 timetable
-
-        why_ = {}
+        #TODO: Memoization which rasps are problematic
         problematic_rasps = []
-        prob_profs = set()
-
-        #TODO: This needs optimization, try to memoize which rasps are problematic
         for rasp, (room_id, _, _, _) in old_timetable.items():
-            why_[rasp.id] = set()
+            if rasp.id in data["unsuccessful_rasps"]:
+                continue
             sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
-            #if (not room_id in self.computer_rooms and rasp.needs_computers) or \
-            #   (room_id in self.computer_rooms and not rasp.needs_computers) or \
-            #   bool(self.students_estimate[rasp.id] - self.room_capacity[room_id]>=0) or \
-            #   any(profs_occupied[rasp.professor_id][week, day, hour:(hour+rasp.duration)]>1) or \
-            #   any(rooms_occupied[room_id][week, day, hour:(hour+rasp.duration)]>1) or \
-            #   any(any(nasts_occupied[sem_id][week, day, hour:(hour+rasp.duration)]>1) for sem_id in sem_ids):
-            #    problematic_rasps.append(rasp)
-
             all_dates = rasp_rrules[rasp.id]["all_dates"]
             for week, day, hour in all_dates:
-                bad = False
-                if (not room_id in self.computer_rooms and rasp.needs_computers) or (room_id in self.computer_rooms and not rasp.needs_computers):
-                    why_[rasp.id].add("computers")
-                    bad = True
-                if bool(self.students_estimate[rasp.id] - self.room_capacity[room_id]>=0):
-                    why_[rasp.id].add("capacity")
-                    bad = True
-                if any(profs_occupied[rasp.professor_id][week, day, hour:(hour+rasp.duration)]>1):
-                    why_[rasp.id].add("professors")
-                    prob_profs.add((rasp.professor_id, rasp.id))
-                    bad = True
-                if any(rooms_occupied[room_id][week, day, hour:(hour+rasp.duration)]>1):
-                    why_[rasp.id].add("rooms")
-                    bad = True
-                if any(any(nasts_occupied[sem_id][week, day, hour:(hour+rasp.duration)]>1) for sem_id in sem_ids):
-                    why_[rasp.id].add("nasts")
-                    bad = True
-                if bad:
-                    break
-
-            if len(why_[rasp.id]):
-               problematic_rasps.append(rasp)
+                if (not room_id in self.computer_rooms and rasp.needs_computers) or (room_id in self.computer_rooms and not rasp.needs_computers) or \
+                    bool(self.students_estimate[rasp.id] - self.room_capacity[room_id]>=0) or \
+                    any(profs_occupied[rasp.professor_id][week, day, hour:(hour+rasp.duration)]>1) or \
+                    any(rooms_occupied[room_id][week, day, hour:(hour+rasp.duration)]>1) or \
+                    any(any(nasts_occupied[sem_id][week, day, hour:(hour+rasp.duration)]>1) for sem_id in sem_ids):
+                        problematic_rasps.append(rasp)
 
         if not problematic_rasps:
             print("NO PROBLEMATIC RASPS")
+            data["converged"] = True
             return data
 
         new_timetable = old_timetable.copy()
@@ -480,25 +477,21 @@ class Optimizer:
         pool = set()
         if rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
             dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
-            for dtstart_weekday in dtstart_weekdays:
-                given_week, given_day, _ = time_api.date_to_index(dtstart_weekday)
-                pool |= self.get_slots(rasp0, rooms_occupied, given_week, given_day)
+            for given_week, given_day, _ in dtstart_weekdays:
+                pool |= self.get_slots(rasp0, old_slot, rasp_rrules, possible_rrules, rooms_occupied, profs_occupied, nasts_occupied, given_week, given_day)
 
         elif rasp0.random_dtstart_weekday and rasp0.fixed_hour:
             dtstart_weekdays = rasp_rrules[rasp0.id]["dtstart_weekdays"]
-            for dtstart_weekday in dtstart_weekdays:
-                given_week, given_day, given_hour = time_api.date_to_index(dtstart_weekday)
-                pool |= self.get_slots(rasp0, rooms_occupied, given_week, given_day, given_hour)
+            for given_week, given_day, given_hour in dtstart_weekdays:
+                pool |= self.get_slots(rasp0, old_slot, rasp_rrules, possible_rrules, rooms_occupied, profs_occupied, nasts_occupied, given_week, given_day, given_hour)
 
         elif not rasp0.random_dtstart_weekday and not rasp0.fixed_hour:
-            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
-            given_week, given_day, _ = time_api.date_to_index(dtstart)
-            pool |= self.get_slots(rasp0, rooms_occupied, given_week, given_day)
+            given_week, given_day, _ = rasp_rrules[rasp0.id]["DTSTART"]
+            pool |= self.get_slots(rasp0, old_slot, rasp_rrules, possible_rrules, rooms_occupied, profs_occupied, nasts_occupied, given_week, given_day)
 
         elif not rasp0.random_dtstart_weekday and rasp0.fixed_hour:
-            dtstart = rasp_rrules[rasp0.id]["DTSTART"]
-            given_week, given_day, given_hour = time_api.date_to_index(dtstart)
-            pool |= self.get_slots(rasp0, rooms_occupied, given_week, given_day, given_hour)
+            given_week, given_day, given_hour = rasp_rrules[rasp0.id]["DTSTART"]
+            pool |= self.get_slots(rasp0, old_slot, rasp_rrules, rooms_occupied, profs_occupied, nasts_occupied, given_week, given_day, given_hour)
 
         BEFORE_GRADE = grades["all"].copy()
         self.untax_rrule_in_rooms(old_slot, rooms_occupied[old_slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"], grades)
@@ -512,21 +505,28 @@ class Optimizer:
 
         old_rrules = rasp_rrules[rasp0.id].copy()
         skip = set()
+        capacity_skip, computer_skip = False, False
+        cnt = 0
         for slot in pool_list:
             if (slot.day, slot.hour) in skip:
                 continue
-
             if slot.room_id in skip:
                 continue
+            if capacity_skip and self.room_capacity[slot.room_id] < self.students_estimate[rasp0.id]:
+                continue
+            if computer_skip and (slot.room_id not in self.computer_rooms and rasp0.needs_computers or slot.room_id in self.computer_rooms and not rasp0.needs_computers):
+                continue
+            cnt += 1
 
-            NEW_DTSTART = time_api.index_to_date(slot.week, slot.day, slot.hour)
-            NEW_UNTIL = rasp_rrules[rasp0.id]["UNTIL"]
-            until_week, until_day, _ = time_api.date_to_index(NEW_UNTIL)
-            NEW_UNTIL = time_api.index_to_date(until_week, until_day, slot.hour)
+            key = (slot.week, slot.day)
+            all_dates = [(week, day, slot.hour) for week, day in possible_rrules[rasp0.id][key]["all_dates"]]
+
+            NEW_DTSTART = all_dates[0]
+            NEW_UNTIL = all_dates[-1]
 
             rasp_rrules[rasp0.id]["DTSTART"] = NEW_DTSTART
             rasp_rrules[rasp0.id]["UNTIL"] = NEW_UNTIL
-            rasp_rrules[rasp0.id]["all_dates"] = time_api.get_rrule_dates(rasp0.rrule, NEW_DTSTART, NEW_UNTIL)
+            rasp_rrules[rasp0.id]["all_dates"] = all_dates
 
             self.tax_rrule_in_rooms(slot, rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"], grades)
             self.tax_rrule_in_profs(slot, profs_occupied[rasp0.professor_id], rasp0, rasp_rrules[rasp0.id]["all_dates"], grades)
@@ -539,19 +539,27 @@ class Optimizer:
 
             percent_prof_nast = ((grades["all"]["professorScore"] + grades["all"]["nastScore"]) / grades["all"]["totalScore"])
             percent_room = ((grades["all"]["capacityScore"] + grades["all"]["computerScore"] + grades["all"]["roomScore"]) / grades["all"]["totalScore"])
+            percent_capacity = (grades["all"]["capacityScore"] / grades["all"]["totalScore"])
+            percent_computers = (grades["all"]["computerScore"] / grades["all"]["totalScore"])
+
             if percent_prof_nast >= 0.7:
                 skip.add((slot.day, slot.hour))
             if percent_room >= 0.7:
                 skip.add(slot.room_id)
+            if percent_capacity >= 0.5:
+                capacity_skip = True
+            if percent_computers >= 0.5:
+                computer_skip = True
 
             self.untax_rrule_in_rooms(slot, rooms_occupied[slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"], grades)
             self.untax_rrule_in_profs(slot, profs_occupied[rasp0.professor_id], rasp0, rasp_rrules[rasp0.id]["all_dates"], grades)
             self.untax_rasp_nasts(slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied, grades)
             self.untax_capacity_computers(slot, rasp0, grades)
 
+        print("ITERS: ", cnt, rasp0.id)
 
         if not the_slot:
-            print("nothing find better")
+            data["unsuccessful_rasps"].add(rasp0.id)
             new_timetable[rasp0] = old_slot
             rasp_rrules[rasp0.id] = old_rrules
             self.tax_rrule_in_rooms(old_slot, rooms_occupied[old_slot.room_id], rasp0, rasp_rrules[rasp0.id]["all_dates"], grades)
@@ -559,6 +567,8 @@ class Optimizer:
             self.tax_rasp_nasts(old_slot, rasp0, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied, grades)
             self.tax_capacity_computers(old_slot, rasp0, grades)
             return data
+        else:
+            data["unsuccessful_rasps"] = set()
 
         slot = the_slot
 
