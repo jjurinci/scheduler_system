@@ -1,7 +1,6 @@
 import pickle
 import numpy as np
 import data_api.classrooms     as room_api
-import data_api.time_structure as time_api
 import data_api.semesters      as seme_api
 import data_api.rasps          as rasp_api
 import data_api.professors     as prof_api
