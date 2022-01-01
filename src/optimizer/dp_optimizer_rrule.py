@@ -55,9 +55,11 @@ class Optimizer:
 
 
     def init_rrule_objects(self, rasps):
-        rasp_rrules, possible_rrules = {}, {}
+        rasp_rrules, possible_rrules, rasp_freqs = {}, {}, {}
+        freqs = {0:"YEARLY", 1:"MONTHLY", 2:"WEEKLY", 3:"DAILY"}
         for rasp in rasps:
             rrule_obj = rrulestr(rasp.rrule)
+            rasp_freqs[rasp.id] = freqs[rrule_obj._freq]
             dtstart = rrule_obj._dtstart
             until = rrule_obj._until
             dtstart_weekdays = time_api.all_dtstart_weekdays(dtstart) if rasp.random_dtstart_weekday else []
@@ -86,7 +88,7 @@ class Optimizer:
             until = time_api.date_to_index(until)
             rasp_rrules[rasp.id] = {"DTSTART": dtstart, "UNTIL": until, "dtstart_weekdays":dtstart_weekdays, "all_dates":[]}
 
-        return rasp_rrules, possible_rrules
+        return rasp_rrules, possible_rrules, rasp_freqs
 
 
     def update_rasp_rrules(self, slot, rasp, rasp_rrules, possible_rrules):
@@ -108,7 +110,7 @@ class Optimizer:
             optionals_occupied = defaultdict(lambda: np.zeros((self.NUM_WEEKS, 5, self.NUM_HOURS), dtype=np.uint8))
             groups_occupied = self.init_groups_occupied(self.rasps)
             grades = self.init_grades(self.rasps, rooms_occupied)
-            rasp_rrules, possible_rrules = self.init_rrule_objects(self.rasps)
+            rasp_rrules, possible_rrules, rasp_freqs = self.init_rrule_objects(self.rasps)
 
             seen_avs = set()
             for rasp in self.rasps:
@@ -134,6 +136,7 @@ class Optimizer:
                     "groups_occupied": groups_occupied,
                     "rasp_rrules": rasp_rrules,
                     "possible_rrules": possible_rrules,
+                    "rasp_freqs": rasp_freqs,
                     "unsuccessful_rasps": set(),
                     "converged": False}
 
@@ -420,7 +423,7 @@ class Optimizer:
         return pool
 
 
-    def failure_reason(self, action, slot, new_grade_with_new_slot, old_grade_without_old_slot, pure_old_slot_grade):
+    def failure_reason(self, action, slot, rasp, rasp_freqs, new_grade_with_new_slot, old_grade_without_old_slot, pure_old_slot_grade):
         pure_new_slot_grade = {k:new_grade_with_new_slot[k] -
                                old_grade_without_old_slot[k]
                                for k in new_grade_with_new_slot}
@@ -432,8 +435,11 @@ class Optimizer:
         new_computer  = pure_new_slot_grade["computerScore"]
         _, week, day, hr = slot
 
+        ban_slot = (day, hr) if rasp_freqs[rasp.id] == "WEEKLY" else (week, day, hr)
+
+        # A more rigorous way would be to ban simply IF there is a collision
         if new_professor + new_nast <= old_total:
-            action["ban_dates"].add((week, day, hr))
+            action["ban_dates"].add(ban_slot)
 
         if new_capacity <= old_total:
             action["ban_capacity"] = True
@@ -442,16 +448,16 @@ class Optimizer:
             action["ban_computers"] = True
 
         if new_professor + new_nast + new_capacity <= old_total:
-            action["ban_capacity_with_dates"].add((week, day, hr))
+            action["ban_capacity_with_dates"].add(ban_slot)
 
         if new_professor + new_nast + new_computer <= old_total:
-            action["ban_computers_with_dates"].add((week, day, hr))
+            action["ban_computers_with_dates"].add(ban_slot)
 
         if new_capacity + new_computer <= old_total:
             action["ban_capacity_with_computers"] = True
 
         if new_professor + new_nast + new_capacity + new_computer <= old_total:
-            action["ban_dates_with_capacity_with_computers"].add((week, day, hr))
+            action["ban_dates_with_capacity_with_computers"].add(ban_slot)
 
 
     def insufficient_capacity(self, rasp, room_id):
@@ -462,21 +468,23 @@ class Optimizer:
         return ((not room_id in self.computer_rooms and rasp.needs_computers) or (room_id in self.computer_rooms and not rasp.needs_computers))
 
 
-    def is_skippable(self, slot, rasp, action):
+    def is_skippable(self, slot, rasp, rasp_freqs, action):
         room_id, week,day,hr = slot
-        if (week, day, hr) in action["ban_dates"]:
+        ban_slot = (day, hr) if rasp_freqs[rasp.id] == "WEEKLY" else (week, day, hr)
+
+        if ban_slot in action["ban_dates"]:
             return True
         if action["ban_capacity"] and self.insufficient_capacity(rasp, room_id):
             return True
         if action["ban_computers"] and self.insufficient_computers(rasp, room_id):
             return True
-        if (week, day, hr) in action["ban_capacity_with_dates"] and self.insufficient_capacity(rasp, room_id):
+        if ban_slot in action["ban_capacity_with_dates"] and self.insufficient_capacity(rasp, room_id):
             return True
-        if (week, day, hr) in action["ban_computers_with_dates"] and self.insufficient_computers(rasp, room_id):
+        if ban_slot in action["ban_computers_with_dates"] and self.insufficient_computers(rasp, room_id):
             return True
         if action["ban_capacity_with_computers"] and self.insufficient_computers(rasp, room_id) and self.insufficient_capacity(rasp, room_id):
             return True
-        if (week, day, hr) in action["ban_dates_with_capacity_with_computers"] and self.insufficient_capacity(rasp, room_id) and self.insufficient_computers(rasp, room_id):
+        if ban_slot in action["ban_dates_with_capacity_with_computers"] and self.insufficient_capacity(rasp, room_id) and self.insufficient_computers(rasp, room_id):
             return True
         return False
 
@@ -501,18 +509,23 @@ class Optimizer:
         groups_occupied = data["groups_occupied"]
         grades = data["grades"]
         possible_rrules = data["possible_rrules"]
+        rasp_freqs = data["rasp_freqs"]
 
         # Pick a random problematic rasp
         rasps = list(timetable.keys())
         random.shuffle(rasps)
         rasp0 = None
+        first_iters = 0
         for rasp in rasps:
             if rasp.id in data["unsuccessful_rasps"]:
                 continue
+            first_iters += 1
             room_id, _, _, _= timetable[rasp]
             if grade_tool.is_rasp_problematic(rasp, rasp_rrules[rasp.id]["all_dates"], room_id, rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied, self.computer_rooms, self.room_capacity, self.students_estimate):
                 rasp0 = rasp
                 break
+
+        print("FIRST ITERS: ", first_iters)
 
         if not rasp0:
             print("NO PROBLEMATIC RASPS.")
@@ -538,14 +551,14 @@ class Optimizer:
         #Probably because of the improved problematic finding.
         assert pure_old_slot_grade["totalScore"] != 0 and all(x<=0 for x in pure_old_slot_grade.values())
 
-
         action = self.init_action()
         pool_list = list(pool)
         random.shuffle(pool_list)
         the_slot = None
-        cnt = 0
+        cnt, skipped = 0, 0
         for new_slot in pool_list:
-            if self.is_skippable(new_slot, rasp0, action):
+            if self.is_skippable(new_slot, rasp0, rasp_freqs, action):
+                skipped += 1
                 continue
             cnt += 1
 
@@ -557,12 +570,14 @@ class Optimizer:
                 break
 
             if grades["all"]["totalScore"] != old_grade_with_old_slot["totalScore"]:
-                self.failure_reason(action, new_slot, grades["all"],
-                                    old_grade_without_old_slot, pure_old_slot_grade)
+                self.failure_reason(action, new_slot, rasp0, rasp_freqs, grades["all"], old_grade_without_old_slot, pure_old_slot_grade)
 
             self.untax_all_constraints(new_slot, rasp0, rasp_rrules[rasp0.id]["all_dates"], rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied, groups_occupied, grades)
 
-        print("ITERS: ", cnt, rasp0.id)
+        print("ITERS: ", cnt, rasp0.id, "SKIPPED: ", skipped)
+        #if skipped > 500:
+        #    print(rasp0, pure_old_slot_grade, the_slot, old_slot)
+        #    quit()
 
         if not the_slot:
             data["unsuccessful_rasps"].add(rasp0.id)
