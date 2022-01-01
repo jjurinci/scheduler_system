@@ -11,8 +11,7 @@ from collections import defaultdict
 path = "saved_timetables/zero_timetable.pickle"
 
 with open(path, "rb") as p:
-    sample = pickle.load(p)
-    data = sample[0]
+    data = pickle.load(p)
 
     winter = True
     NUM_WEEKS = 17

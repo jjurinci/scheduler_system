@@ -48,13 +48,12 @@ data = {
 }
 
 o = Optimizer(data)
-sample = []
 got_zero = False
 for _ in range(5):
     try:
-        sample = o.random_sample(1)
-        sample = o.iterate_no_parallel(sample, population_cap=1) #this one is much faster actually
-        if sample[0]["grades"]["all"]["totalScore"] == 0:
+        data = o.random_timetable()
+        data = o.iterate(data)
+        if data["grades"]["all"]["totalScore"] == 0:
             got_zero = True
             break
     except KeyboardInterrupt:
@@ -64,4 +63,4 @@ if got_zero:
     name = "zero_timetable.pickle"
     print(f"Saving sample to {name}")
     with open(name, "wb") as p:
-        pickle.dump(sample, p)
+        pickle.dump(data, p)

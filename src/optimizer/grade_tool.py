@@ -24,18 +24,8 @@ def is_nast_problematic(rasp, slot, nasts_occupied, optionals_occupied):
     sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
 
     for sem_id in sem_ids:
-        rasp_mandatory = True if sem_id in rasp.mandatory_in_semester_ids else False
-        if rasp_mandatory:
-            problem = np.any(nasts_occupied[sem_id][week, day, hour:(hour+rasp.duration)]>1)
-            if problem:
-                return True
-        else:
-            # If we were to untax such an optional rasp, it would improve the score
-            for hr in range(hour, hour + rasp.duration):
-                is_only_optional = optionals_occupied[sem_id][week,day,hr]-1 == 0
-                has_collision    = nasts_occupied[sem_id][week,day,hr] > 1
-                if is_only_optional and has_collision:
-                    return True
+        if np.any(nasts_occupied[sem_id][week, day, hour:(hour+rasp.duration)]>1):
+            return True
     return False
 
 
