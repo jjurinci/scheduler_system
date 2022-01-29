@@ -1,184 +1,109 @@
 import pickle
 import numpy as np
-import data_api.semesters as seme_api
-import data_api.subjects as subj_api
 from tabulate import tabulate
+import data_api.time_structure as time_api
+import datetime
 
 
-def load_timetables():
-    name = "saved_timetables/timetable_to_analyze.pickle"
+def load_timetable():
+    name = "saved_timetables/zero_timetable.pickle"
     with open(name, "rb") as f:
-        timetables = pickle.load(f)
-    return timetables
+        data = pickle.load(f)
+    return data
 
 
-def day_to_str(day: int):
-    if day == 0:
-        return "monday"
-    if day == 1:
-        return "tuesday"
-    if day == 2:
-        return "wednesday"
-    if day == 3:
-        return "thursday"
-    if day == 4:
-        return "friday"
+def show_object_str(show_object):
+    rasp, room_id = show_object["rasp"], show_object["room_id"]
+    rasp_repr = str(rasp.subject_id) + str(rasp.type) + str(rasp.group)
+    return f"{rasp_repr} {room_id} {rasp.professor_id}"
 
 
-def rasp_to_str(rasp, roomId):
-    m = "*" if not rasp.mandatory else ""
-    return f"{m}{rasp.subjectId} {rasp.type} {rasp.group} {roomId} {rasp.professorId}"
-
-
-def get_professor_print_table(timetable, prof_id):
-    print_table = np.zeros((16,6), dtype=np.ndarray)
-    for i in range(16):
-        for j in range(1,6):
+def get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id="", by_room_id="", by_sem_id=""):
+    week_matrix = week_matrix.copy()
+    print_table = np.zeros((NUM_HOURS,NUM_DAYS + 1), dtype=np.ndarray)
+    for i in range(NUM_HOURS):
+        for j in range(1,NUM_DAYS+1):
             print_table[i][j] = []
 
-    for i in range(16):
+    for i in range(NUM_HOURS):
         print_table[i][0] = i+1
 
-    for rasp, (room, day, hour) in timetable.items():
-        day = day+1
-        if rasp.professorId == prof_id:
-            rasp_str = rasp_to_str(rasp, room)
-            for i in range(rasp.duration):
-                print_table[hour+i][day].append(rasp_str)
+    for day in range(NUM_DAYS):
+        for hour in range(NUM_HOURS):
+            if by_prof_id:
+                week_matrix[day, hour] = [obj for obj in week_matrix[day, hour]
+                                          if obj["rasp"].professor_id == by_prof_id]
+            elif by_room_id:
+                week_matrix[day, hour] = [obj for obj in week_matrix[day, hour]
+                                          if obj["room_id"] == by_room_id]
+            elif by_sem_id:
+                week_matrix[day, hour] = [obj for obj in week_matrix[day, hour]
+                                          if by_sem_id in obj["rasp"].mandatory_in_semester_ids or
+                                             by_sem_id in obj["rasp"].optional_in_semester_ids]
+
+            for show_object in week_matrix[day, hour]:
+                obj_str = show_object_str(show_object)
+                for hr in range(hour, hour+show_object["rasp"].duration):
+                    print_table[hr, day+1].append(obj_str)
 
     return print_table
 
 
-def get_classroom_print_table(timetable, classroom_id):
-    print_table = np.zeros((16,6), dtype=np.ndarray)
-    for i in range(16):
-        for j in range(1,6):
-            print_table[i][j] = []
+def print_timetable():
+    data = load_timetable()
+    timetable = data["timetable"]
+    rasp_rrules = data["rasp_rrules"]
+    rasps = timetable.keys()
 
-    for i in range(16):
-        print_table[i][0] = i+1
+    START_SEMESTER_DATE, _ = time_api.get_start_end_semester()
+    NUM_WEEKS, NUM_DAYS, NUM_HOURS = 17, 5, 16
+    schedule_matrix = np.empty(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=object)
 
-    for rasp, (room, day, hour) in timetable.items():
-        day = day+1
-        if room == classroom_id:
-            rasp_str = rasp_to_str(rasp, room)
-            for i in range(rasp.duration):
-                print_table[hour+i][day].append(rasp_str)
+    for week in range(NUM_WEEKS):
+        for day in range(NUM_DAYS):
+            for hour in range(NUM_HOURS):
+                schedule_matrix[week,day,hour] = []
 
-    return print_table
+    for rasp in rasps:
+        show_object = {"rasp": rasp, "room_id": timetable[rasp].room_id, "prof_id": rasp.professor_id}
+        all_dates = rasp_rrules[rasp.id]["all_dates"]
+        for week, day, hour in all_dates:
+            schedule_matrix[week, day, hour].append(show_object)
 
+    prof_ids = set(rasp.professor_id for rasp in rasps)
+    for prof_id in prof_ids:
+        for week in range(NUM_WEEKS):
+            week_matrix = schedule_matrix[week]
+            week_matrix = get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id=prof_id)
+            date = (START_SEMESTER_DATE + datetime.timedelta(weeks = week)).date()
+            print(f"{prof_id} WEEK {week+1} {date}")
+            print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
+            print("")
 
-def get_semester_print_table(timetable, sub_ids):
-    print_table = np.zeros((16,6), dtype=np.ndarray)
-    for i in range(16):
-        for j in range(1,6):
-            print_table[i][j] = []
+    room_ids = set(slot.room_id for slot in timetable.values())
+    for room_id in room_ids:
+        for week in range(NUM_WEEKS):
+            week_matrix = schedule_matrix[week]
+            week_matrix = get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_room_id=room_id)
+            date = (START_SEMESTER_DATE + datetime.timedelta(weeks = week)).date()
+            print(f"{room_id} WEEK {week+1} {date}")
+            print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
+            print("")
 
-    for i in range(16):
-        print_table[i][0] = i+1
+    sem_ids = set()
+    for rasp in rasps:
+        rasp_sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in rasp_sem_ids:
+            sem_ids.add(sem_id)
 
-    for rasp, (room, day, hour) in timetable.items():
-        day = day+1
-        if rasp.subjectId in sub_ids:
-            rasp_str = rasp_to_str(rasp, room)
-            for i in range(rasp.duration):
-                print_table[hour+i][day].append(rasp_str)
-
-    return print_table
-
-
-def get_all_print_table(timetable):
-    print_table = np.zeros((16,6), dtype=np.ndarray)
-    for i in range(16):
-        for j in range(1,6):
-            print_table[i][j] = []
-
-    for i in range(16):
-        print_table[i][0] = i+1
-
-    for rasp, (room, day, hour) in timetable.items():
-        day = day+1
-        rasp_str = rasp_to_str(rasp, room)
-        for i in range(rasp.duration):
-            print_table[hour+i][day].append(rasp_str)
-
-    return print_table
-
-
-def print_timetable(save_to_file=True, stdout = False):
-    if not save_to_file and not stdout:
-        print("Invalid arguments.")
-        return
-
-    timetable = load_timetables()[0]["timetable"]
-
-    rasps = list(timetable.keys())
-    times = list(timetable.values())
-    professor_ids = {rasp.professorId for rasp in rasps}
-    classroom_ids = {time[0] for time in times}
+    for sem_id in sem_ids:
+        for week in range(NUM_WEEKS):
+            week_matrix = schedule_matrix[week]
+            week_matrix = get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_sem_id=sem_id)
+            date = (START_SEMESTER_DATE + datetime.timedelta(weeks = week)).date()
+            print(f"{sem_id} WEEK {week+1} {date}")
+            print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
+            print("")
 
 
-    subjects = subj_api.get_subjects_with_rasps(rasps)
-    season = subj_api.get_subject_season(subjects[0])
-
-    semesters = []
-    if season == "W":
-        semesters = seme_api.get_winter_semesters()
-    elif season == "S":
-        semesters = seme_api.get_summer_semesters()
-    else:
-        print(f"Couldn't find any semesters for subject '{subjects[0].id}'.")
-        quit()
-
-    semester_subjects = {}
-    for semester in semesters:
-        semester_subjects[semester] = [sub for sub in subjects if semester.id in sub.semesterIds]
-
-    professor_print_tables = ""
-    for prof_id in professor_ids:
-        print_table = get_professor_print_table(timetable, prof_id)
-        professor_print_tables += f"\n\n{prof_id}\n"
-        professor_print_tables += tabulate(print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid')
-        if stdout:
-            print("\n", prof_id)
-            print(tabulate(print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
-
-
-    classroom_print_tables = ""
-    for room_id in classroom_ids:
-        print_table = get_classroom_print_table(timetable, room_id)
-        classroom_print_tables += f"\n\n{room_id}\n"
-        classroom_print_tables += tabulate(print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid')
-        if stdout:
-            print("\n", room_id)
-            print(tabulate(print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
-
-    semester_print_tables = ""
-    for semester in semesters:
-        sub_ids = [subject.id for subject in semester_subjects[semester]]
-        print_table = get_semester_print_table(timetable, sub_ids)
-        semester_print_tables += f"\n\n{semester.facultyId} {semester.name} {semester.numSemester}\n"
-        semester_print_tables += tabulate(print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid')
-        if stdout:
-            print("\n", semester.name, semester.numSemester)
-            print(tabulate(print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
-
-    all_print_table = get_all_print_table(timetable)
-    all_str = "Everything timetable\n"
-    all_str += tabulate(all_print_table, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid')
-
-
-    if save_to_file:
-        with open("visual_timetables/professor_timetables.txt", "w") as f:
-            f.write(professor_print_tables)
-
-        with open("visual_timetables/classroom_timetables.txt", "w") as f:
-            f.write(classroom_print_tables)
-
-        with open("visual_timetables/semester_timetables.txt", "w") as f:
-            f.write(semester_print_tables)
-
-        with open("visual_timetables/everything_timetable.txt", "w") as f:
-            f.write(all_str)
-
-print_timetable(save_to_file = False, stdout = True)
+print_timetable()

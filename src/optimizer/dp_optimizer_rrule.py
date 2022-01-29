@@ -143,14 +143,13 @@ class Optimizer:
 
 
     def count_all_constraints(self, slot, rasp, all_dates, rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied, groups_occupied):
-        grade_obj = {"totalScore": 0, "roomScore": 0, "professorScore": 0,
-                     "capacityScore": 0, "computerScore": 0, "nastScore": 0}
+        grade_obj                   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
         grade_obj["roomScore"]      = self.count_rrule_in_matrix3D(rasp, all_dates, rooms_occupied[slot.room_id])
         grade_obj["professorScore"] = self.count_rrule_in_matrix3D(rasp, all_dates, profs_occupied[rasp.professor_id])
         grade_obj["nastScore"]      = self.count_rrule_in_nasts(slot, rasp, all_dates, nasts_occupied, optionals_occupied, groups_occupied)
         grade_obj["capacityScore"]  = -30 * self.insufficient_capacity(rasp, slot.room_id)
         grade_obj["computerScore"]  = -30 * self.insufficient_strong_computers(rasp, slot.room_id) + (-3 * self.insufficient_weak_computers(rasp, slot.room_id))
-        grade_obj["totalScore"] = sum(grade_obj.values())
+        grade_obj["totalScore"]     = sum(grade_obj.values())
         return grade_obj
 
 
@@ -472,8 +471,6 @@ class Optimizer:
 
         ban_slot = (day, hr) if rasp_freqs[rasp.id] == "WEEKLY" else (week, day, hr)
 
-        # A more rigorous way would be to ban simply IF there is a collision.
-        # That would enforce all 0s every time, but would cut off many paths to solution.
         if new_professor + new_nast <= old_total:
             action["ban_dates"].add(ban_slot)
 
