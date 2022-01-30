@@ -4,8 +4,7 @@ from collections import namedtuple
 University = namedtuple('University', ['id', 'name', 'user_id'])
 Faculty = namedtuple('Faculty', ['id', 'name', 'university_id', 'user_id'])
 Study_Programme = namedtuple('Study_Programme', ['id', 'name', 'faculty_id', 'user_id'])
-Study_Programme_Module = namedtuple('Study_Programme_Module', ['id', 'name', 'study_programme_id', 'user_id'])
-Semester = namedtuple('Semester', ['id', 'season', 'num_semester', 'has_optional_subjects', 'num_students', 'study_programme_module_id', 'user_id'])
+Semester = namedtuple('Semester', ['id', 'season', 'num_semester', 'has_optional_subjects', 'num_students', 'study_programme_id', 'user_id'])
 Subject = namedtuple('Subject', ['id', 'name', 'mandatory_in_semester_ids', 'optional_in_semester_ids','user_id', 'rasps'])
 Rasp = namedtuple('Rasp', ['id', 'subject_id', 'professor_id','type', 'group', 'duration', 'mandatory_in_semester_ids',  'optional_in_semester_ids', 'needs_computers', 'total_groups', 'fix_at_room_id','random_dtstart_weekday','fixed_hour','rrule'])
 

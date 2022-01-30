@@ -4,9 +4,9 @@ import data_api.classrooms     as room_api
 import data_api.semesters      as seme_api
 import data_api.rasps          as rasp_api
 import data_api.professors     as prof_api
+import data_api.time_structure as time_api
 from collections import defaultdict
-
-#TODO: Check if rrule actually has correct dates (DTSTART, UNTIL, ALL_DATES)
+from dateutil.rrule import rrulestr
 
 path = "saved_timetables/zero_timetable.pickle"
 
@@ -14,8 +14,7 @@ with open(path, "rb") as p:
     data = pickle.load(p)
 
     winter = True
-    NUM_WEEKS = 17
-    NUM_HOURS = 16
+    NUM_WEEKS, NUM_DAYS, NUM_HOURS = 17, 5, 16
     semesters_info = seme_api.get_winter_semesters_dict() if winter else seme_api.get_summer_semesters_dict()
     rasps = rasp_api.get_rasps_by_season(winter = winter)
     nasts = seme_api.get_nasts_all_semesters(rasps, winter)
@@ -70,8 +69,8 @@ def check_grade_is_0(data):
     timetable   = data["timetable"]
     rasp_rrules = data["rasp_rrules"]
 
-    nasts_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, 5, NUM_HOURS), dtype=np.uint8))
-    optionals_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, 5, NUM_HOURS), dtype=np.uint8))
+    nasts_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8))
+    optionals_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8))
     groups_occupied = {}
     for rasp in timetable:
         if rasp.total_groups > 1:
@@ -113,7 +112,7 @@ def check_grade_is_0(data):
     given_rooms_occupied = data["rooms_occupied"]
     for room_id in rooms_occupied:
         for week in range(NUM_WEEKS):
-            for day in range(5):
+            for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
                     if rooms_occupied[room_id][week, day, hour] > 1:
                         print(f"ROOMS: {room_id} has a collision problem at ({week}, {day}, {hour}).")
@@ -126,7 +125,7 @@ def check_grade_is_0(data):
     prof_ids = set([rasp.professor_id for rasp in timetable])
     for prof_id in prof_ids:
         for week in range(NUM_WEEKS):
-            for day in range(5):
+            for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
                     if profs_occupied[prof_id][week, day, hour] > 1:
                         print(f"PROFS: {prof_id} has a collision problem at ({week}, {day}, {hour}).")
@@ -140,7 +139,7 @@ def check_grade_is_0(data):
 
     for sem_id in all_sem_ids:
         for week in range(NUM_WEEKS):
-            for day in range(5):
+            for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
                     if nasts_occupied[sem_id][week, day, hour] > 1:
                         print(f"NASTS: {sem_id} has a collision problem at ({week}, {day}, {hour}).")
@@ -153,15 +152,14 @@ def check_grade_is_0(data):
 def no_mandatory_optional_collisions(data):
     timetable, rasp_rrules = data["timetable"], data["rasp_rrules"]
 
-    mandatory_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, 5, NUM_HOURS), dtype=np.uint8))
-    optionals_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, 5, NUM_HOURS), dtype=np.uint8))
+    mandatory_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8))
+    optionals_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8))
 
     for rasp, _ in timetable.items():
         all_dates = rasp_rrules[rasp.id]["all_dates"]
         sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
         for sem_id in sem_ids:
             rasp_mandatory = True if sem_id in rasp.mandatory_in_semester_ids else False
-
             for week, day, hour in all_dates:
                 if rasp_mandatory:
                     mandatory_occupied[sem_id][week, day, hour:(hour + rasp.duration)] += 1
@@ -172,7 +170,7 @@ def no_mandatory_optional_collisions(data):
     all_sem_ids = set([sem_id for rasp in timetable for sem_id in rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids])
     for sem_id in all_sem_ids:
         for week in range(NUM_WEEKS):
-            for day in range(5):
+            for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
                     mand_val = mandatory_occupied[sem_id][week, day, hour]
                     opti_val = optionals_occupied[sem_id][week, day, hour]
@@ -205,7 +203,52 @@ def all_dates_correct_start(data):
         assert start_slot == all_dates[0]
 
 
+def correct_rrules(data):
+    timetable, rasp_rrules = data["timetable"], data["rasp_rrules"]
+
+    for rasp, _ in timetable.items():
+        rrule = rrulestr(rasp.rrule)
+
+        chosen_dt_week, chosen_dt_day, chosen_dt_hour    = rasp_rrules[rasp.id]["DTSTART"]
+        chosen_un_week, chosen_un_day, chosen_un_hour    = rasp_rrules[rasp.id]["UNTIL"]
+        correct_dt_week, correct_dt_day, correct_dt_hour = time_api.date_to_index(rrule._dtstart)
+
+        if rasp.fixed_hour and chosen_dt_hour != correct_dt_hour:
+            print(rrule._dtstart)
+            print(f"{rasp.id} has fixed hour and {chosen_dt_hour=} != {correct_dt_hour=}")
+        else:
+            correct_dt_hour = chosen_dt_hour
+
+        # random=1 -> Check if chosen DTSTART falls in the correct random range
+        if rasp.random_dtstart_weekday:
+            viable_dtstarts = time_api.all_dtstart_weekdays(rrule._dtstart)
+            viable_dtstarts = [time_api.date_to_index(dt) for dt in viable_dtstarts]
+            good = False
+            for week, day, _ in viable_dtstarts:
+                if week == chosen_dt_week and day == chosen_dt_day:
+                    good = True
+                    break
+            if not good:
+                print(f"{rasp.id} has {rasp.random_dtstart_weekday=} and {chosen_dt_week=} {chosen_dt_day=} but it's not viable for {correct_dt_week=} {correct_dt_day=}")
+
+        # random=0 -> Enforce DTSTART day
+        elif chosen_dt_week != chosen_dt_day or chosen_dt_day != correct_dt_day:
+            print(f"{rasp.id} has {rasp.random_dtstart_weekday=} and {chosen_dt_week=} and {correct_dt_week=} and {chosen_dt_day=} and {correct_dt_day=}")
+
+        # At this point: *chosen* DTSTART week,day,hr is correct
+        chosen_dt_date = time_api.index_to_date(chosen_dt_week, chosen_dt_day, chosen_dt_hour)
+        chosen_un_date = time_api.index_to_date(chosen_un_week, chosen_un_day, chosen_un_hour)
+        correct_all_dates = time_api.get_rrule_dates(rasp.rrule, chosen_dt_date, chosen_un_date)
+        chosen_all_dates = rasp_rrules[rasp.id]["all_dates"]
+
+        assert len(correct_all_dates) == len(chosen_all_dates)
+
+        for i in range(len(correct_all_dates)):
+            assert correct_all_dates[i] == chosen_all_dates[i]
+
+
 all_rasps_have_dates(data)
 all_dates_correct_start(data)
 no_mandatory_optional_collisions(data)
 check_grade_is_0(data)
+correct_rrules(data)

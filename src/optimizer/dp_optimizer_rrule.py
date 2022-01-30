@@ -429,7 +429,7 @@ class Optimizer:
 
 
     def get_possible_slots(self, rasp, rooms_occupied, week, day, hour = None):
-        if hour:
+        if hour != None: # hour=0 should trigger this if
             return set([Slot(room_id, week, day, hour)
                         for room_id in rooms_occupied])
         else:
