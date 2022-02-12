@@ -95,7 +95,7 @@ def get_nasts_all_semesters(rasps, winter):
 
 
 def get_students_per_rasp_estimate(nasts):
-    students_estimate = Counter()
+    students_per_rasp = Counter()
     for semester, the_nasts in nasts.items():
         if not the_nasts:
             continue
@@ -104,6 +104,6 @@ def get_students_per_rasp_estimate(nasts):
         stud_per_nast = num_students/len(the_nasts)
         for nast in the_nasts:
             margin = {rasp.id: stud_per_nast for rasp in nast}
-            students_estimate.update(margin)
+            students_per_rasp.update(margin)
 
-    return students_estimate
+    return students_per_rasp

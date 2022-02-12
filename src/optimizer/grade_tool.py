@@ -1,25 +1,33 @@
 import numpy as np
 
-def is_computer_problematic(rasp, room_id, computer_rooms):
-    return (not room_id in computer_rooms and rasp.needs_computers) or \
-           (room_id in computer_rooms and not rasp.needs_computers)
+def is_computer_problematic(state, rasp, room_id):
+    rooms = state.rooms
+
+    return (not rooms[room_id].has_computers and rasp.needs_computers) or \
+           (rooms[room_id].has_computers and not rasp.needs_computers)
 
 
-def is_capacity_problematic(rasp, room_id, students_estimate, room_capacity):
-    return students_estimate[rasp.id] - room_capacity[room_id] >= 0
+def is_capacity_problematic(state, rasp, room_id):
+    rooms = state.rooms
+    students_per_rasp = state.students_per_rasp
+
+    return students_per_rasp[rasp.id] - rooms[room_id].capacity > 0
 
 
-def is_room_problematic(rasp, room_id, slot, rooms_occupied):
+def is_room_problematic(state, rasp, room_id, slot):
+    rooms_occupied = state.mutable_constraints.rooms_occupied
     week, day, hour = slot
     return np.any(rooms_occupied[room_id][week, day, hour:(hour+rasp.duration)]>1)
 
 
-def is_prof_problematic(rasp, slot, profs_occupied):
+def is_prof_problematic(state, rasp, slot):
+    profs_occupied = state.mutable_constraints.profs_occupied
     week, day, hour = slot
     return np.any(profs_occupied[rasp.professor_id][week, day, hour:(hour+rasp.duration)]>1)
 
 
-def is_nast_problematic(rasp, slot, nasts_occupied, optionals_occupied):
+def is_nast_problematic(state, rasp, slot):
+    nasts_occupied = state.mutable_constraints.nasts_occupied
     week, day, hour = slot
     sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
 
@@ -29,71 +37,115 @@ def is_nast_problematic(rasp, slot, nasts_occupied, optionals_occupied):
     return False
 
 
-def is_rasp_problematic(rasp, all_dates, room_id, rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied, computer_rooms, room_capacity, students_estimate):
-    if is_computer_problematic(rasp, room_id, computer_rooms) or \
-       is_capacity_problematic(rasp, room_id, students_estimate, room_capacity):
+def is_rasp_problematic(state, rasp, room_id):
+    all_dates = state.rasp_rrules[rasp.id]["all_dates"]
+
+    if is_computer_problematic(state, rasp, room_id) or \
+       is_capacity_problematic(state, rasp, room_id):
            return True
 
     for week, day, hour in all_dates:
         slot = (week, day, hour)
-        if is_room_problematic(rasp, room_id, slot, rooms_occupied) or \
-           is_prof_problematic(rasp, slot, profs_occupied) or \
-           is_nast_problematic(rasp, slot, nasts_occupied, optionals_occupied):
+        if is_room_problematic(state, rasp, room_id, slot) or \
+           is_prof_problematic(state, rasp, slot) or \
+           is_nast_problematic(state, rasp, slot):
                return True
     return False
 
 
-#Sum variation
-def computer_grade(rasp, room_id, computer_rooms):
-    strong_computer = -30 * bool(not room_id in computer_rooms and rasp.needs_computers)
-    weak_computer   = -3  * bool(room_id in computer_rooms and not rasp.needs_computers)
-    return strong_computer + weak_computer
+def init_grades(rasps, rooms):
+    all_sem_ids = set()
+    for rasp in rasps:
+        rasp_sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in rasp_sem_ids:
+            all_sem_ids.add(sem_id)
+
+    grade_obj   = {"totalScore": 0, "roomScore": 0, "professorScore": 0,
+                   "capacityScore": 0, "computerScore": 0, "nastScore": 0}
+    grade_rooms = {"roomScore": 0, "capacityScore": 0, "computerScore": 0}
+    grades = {"rooms": {room_id:grade_rooms.copy() for room_id in rooms},
+              "profs": {rasp.professor_id:0 for rasp in rasps},
+              "nasts": {sem_id:0 for sem_id in all_sem_ids},
+              "all": grade_obj.copy()}
+    return grades
 
 
-def capacity_grade(rasp, room_id, students_estimate, room_capacity):
-    return -30 * (students_estimate[rasp.id] - room_capacity[room_id] >= 0)
+def count_all_constraints(state, slot, rasp):
+    room_occupied     = state.mutable_constraints.rooms_occupied[slot.room_id]
+    prof_occupied     = state.mutable_constraints.profs_occupied[rasp.professor_id]
+
+    grade_obj                   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
+    grade_obj["roomScore"]      = count_rrule_in_matrix3D(state, rasp, room_occupied)
+    grade_obj["professorScore"] = count_rrule_in_matrix3D(state, rasp, prof_occupied)
+    grade_obj["nastScore"]      = count_rrule_in_nasts(state, slot, rasp)
+    grade_obj["capacityScore"]  = -30 * insufficient_capacity(state, rasp, slot.room_id)
+    grade_obj["computerScore"]  = -30 * insufficient_strong_computers(state, rasp, slot.room_id) + (-3 * insufficient_weak_computers(state, rasp, slot.room_id))
+    grade_obj["totalScore"]     = sum(grade_obj.values())
+    return grade_obj
 
 
-def room_grade(rasp, room_id, slot, rooms_occupied):
-    week, day, hour = slot
-    return -30 * np.sum(rooms_occupied[room_id][week, day, hour:(hour+rasp.duration)]>1)
+def count_rrule_in_matrix3D(state, rasp, matrix3D):
+    all_dates = state.rasp_rrules[rasp.id]["all_dates"]
+    return -30 * sum(np.sum(matrix3D[week, day, hour:(hour + rasp.duration)]+1 > 1)
+                 for week,day,hour in all_dates)
 
 
-def prof_grade(rasp, slot, profs_occupied):
-    week, day, hour = slot
-    return -30 * np.sum(profs_occupied[rasp.professor_id][week, day, hour:(hour+rasp.duration)]>1)
-
-
-def nast_grade(rasp, slot, nasts_occupied, optionals_occupied):
-    week, day, hour = slot
-    sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+def count_rrule_in_optional_rasp(state, rasp, sem_id):
+    all_dates = state.rasp_rrules[rasp.id]["all_dates"]
+    nast_occupied = state.mutable_constraints.nasts_occupied[sem_id]
+    optional_occupied = state.mutable_constraints.optionals_occupied[sem_id]
 
     cnt = 0
-    for sem_id in sem_ids:
-        rasp_mandatory = True if sem_id in rasp.mandatory_in_semester_ids else False
-        if rasp_mandatory:
-            cnt += np.sum(nasts_occupied[sem_id][week, day, hour:(hour+rasp.duration)]>1)
-        else:
-            # If we were to untax such an optional rasp, it would improve the score
-            for hr in range(hour, hour + rasp.duration):
-                is_only_optional = optionals_occupied[sem_id][week,day,hr]-1 == 0
-                has_collision    = nasts_occupied[sem_id][week,day,hr] > 1
-                if is_only_optional and has_collision:
+    for week, day, hour in all_dates:
+        for hr in range(hour, hour + rasp.duration):
+            if optional_occupied[week, day, hr] == 0.0:
+                if nast_occupied[week, day, hr]+1 > 1:
                     cnt += 1
     return -30 * cnt
 
 
-def rasp_grade(rasp, all_dates, room_id, rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied, computer_rooms, room_capacity, students_estimate):
-    grade_obj = {"totalScore": 0, "roomScore": 0, "professorScore": 0,
-                 "capacityScore": 0, "computerScore": 0, "nastScore": 0}
+def count_rrule_in_nasts(state, slot, rasp):
+    nasts_occupied = state.mutable_constraints.nasts_occupied
+    groups_occupied = state.mutable_constraints.groups_occupied
+    semesters = state.semesters
 
-    grade_obj["capacityScore"] += capacity_grade(rasp, room_id, students_estimate, room_capacity)
-    grade_obj["computerScore"] += computer_grade(rasp, room_id, computer_rooms)
-    for week, day, hour in all_dates:
-        slot = (week, day, hour)
-        grade_obj["roomScore"] += room_grade(rasp, room_id, slot, rooms_occupied)
-        grade_obj["professorScore"] += prof_grade(rasp, slot, profs_occupied)
-        grade_obj["nastScore"] += nast_grade(rasp, slot, nasts_occupied, optionals_occupied)
+    sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+    key = str(rasp.subject_id) + str(rasp.type)
+    grade = 0
+    for sem_id in sem_ids:
+        rasp_mandatory = True if sem_id in rasp.mandatory_in_semester_ids else False
+        parallel_optionals = True if semesters[sem_id].has_optional_subjects == 1 else False
+        if rasp.total_groups == 1:
+            if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
+                grade += count_rrule_in_matrix3D(state, rasp, nasts_occupied[sem_id])
+            elif not rasp_mandatory and parallel_optionals:
+                grade += count_rrule_in_optional_rasp(state, rasp, sem_id)
 
-    grade_obj["totalScore"] = sum(grade_obj.values())
-    return grade_obj
+        elif rasp.total_groups > 1:
+            if slot not in groups_occupied[key]:
+                groups_occupied[key][slot] = 0
+            if rasp_mandatory and groups_occupied[key][slot] == 0:
+                grade += count_rrule_in_matrix3D(state, rasp, nasts_occupied[sem_id])
+            elif not rasp_mandatory and groups_occupied[key][slot] == 0:
+                grade += count_rrule_in_optional_rasp(state, rasp, sem_id)
+    return grade
+
+
+def insufficient_capacity(state, rasp, room_id):
+    rooms = state.rooms
+    students_per_rasp = state.students_per_rasp
+    return students_per_rasp[rasp.id] - rooms[room_id].capacity >0
+
+
+def insufficient_computers(state, rasp, room_id):
+    rooms = state.rooms
+    return ((not rooms[room_id].has_computers and rasp.needs_computers) or (rooms[room_id].has_computers and not rasp.needs_computers))
+
+
+def insufficient_strong_computers(state, rasp, room_id):
+    rooms = state.rooms
+    return not rooms[room_id].has_computers and rasp.needs_computers
+
+def insufficient_weak_computers(state, rasp, room_id):
+    rooms = state.rooms
+    return rooms[room_id].has_computers and not rasp.needs_computers

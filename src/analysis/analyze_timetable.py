@@ -39,7 +39,7 @@ def analyze_timetable():
     chosen_season = True if season == "W" else False
     rasps = timetable.keys()
     nasts = seme_api.get_nasts_all_semesters(rasps, winter = chosen_season)
-    students_estimate = seme_api.get_students_per_rasp_estimate(nasts)
+    students_per_rasp = seme_api.get_students_per_rasp_estimate(nasts)
 
     # PER RASP
     professor_problems, classroom_problems, capacity_problems,  = [], [], []
@@ -53,7 +53,7 @@ def analyze_timetable():
 
         # Room collisions
         cnt = sum(rooms_occupied[room][day, hour:(hour + rasp.duration)]>1)
-        score_rooms = round(- cnt * students_estimate[rasp], 2)
+        score_rooms = round(- cnt * students_per_rasp[rasp], 2)
         problematic_hours = []
         for i in range(rasp.duration):
             if rooms_occupied[room][day, hour+i] > 1:
@@ -64,7 +64,7 @@ def analyze_timetable():
 
         # Professor collisions
         cnt = sum(professors_occupied[rasp.professorId][day, hour:(hour + rasp.duration)]>1)
-        score_professors = round(- cnt * students_estimate[rasp], 2)
+        score_professors = round(- cnt * students_per_rasp[rasp], 2)
         problematic_hours = []
         for i in range(rasp.duration):
             if professors_occupied[rasp.professorId][day, hour+i] > 1:
@@ -74,18 +74,18 @@ def analyze_timetable():
             professor_problems.append((score_professors, [f"{score_professors}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{rasp.professorId}", f"{good_day}", f"{problematic_hours}"]))
 
         # Insufficient room capacity
-        capacity = bool(students_estimate[rasp] - room_capacity[room]>=0)
-        score_capacity = round(- capacity * rasp.duration * students_estimate[rasp], 2)
+        capacity = bool(students_per_rasp[rasp] - room_capacity[room]>0)
+        score_capacity = round(- capacity * rasp.duration * students_per_rasp[rasp], 2)
         if score_capacity != 0:
             capacity_problems.append((score_capacity, [f"{score_capacity}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
         # Computer room & computer rasp collisions
         if not room in computer_rooms and rasp.needsComputers:
-            score_computers = round(- students_estimate[rasp], 2)
+            score_computers = round(- students_per_rasp[rasp], 2)
             computer_srs_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
         if room in computer_rooms and not rasp.needsComputers:
-            score_computers = round(- students_estimate[rasp] * 0.1, 2)
+            score_computers = round(- students_per_rasp[rasp] * 0.1, 2)
             computer_weak_problems.append((score_computers, [f"{score_computers}", f"{m}{rasp.subjectId} {rasp.type} {rasp.group}{f}", f"{room}", f"{good_day}", f"{good_hour}"]))
 
     chosen_season = True if season == "W" else False
@@ -102,8 +102,8 @@ def analyze_timetable():
                 _, day, hour = timetable[rasp]
                 good_day = day_to_str(day)
                 cnt = sum(nast_taken[day, hour:(rasp.duration + hour)]>1)
-                score_nasts += cnt * students_estimate[rasp]
-                score_nast = round(- cnt * students_estimate[rasp], 2)
+                score_nasts += cnt * students_per_rasp[rasp]
+                score_nast = round(- cnt * students_per_rasp[rasp], 2)
                 problematic_hours = []
                 for i in range(rasp.duration):
                     if nast_taken[day, (hour + i)] > 1:

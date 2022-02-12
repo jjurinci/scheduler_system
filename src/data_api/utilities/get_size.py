@@ -19,3 +19,20 @@ def get_size(obj, seen=None):
         size += sum([get_size(i, seen) for i in obj])
     return size
 
+
+def print_size(data):
+    total = round(get_size(data) / 10**6,4)
+    space = " " * (20 - len("TOTAL"))
+    print("TOTAL" + space, ":", total, "\tMB. ", "100%")
+    print("-"*20)
+    size_list = []
+    for key in data:
+        size = round(get_size(data[key]) / 10**6, 4)
+        percentage = round((size / total) * 100, 2)
+        size_list.append((size, key, percentage))
+
+    size_list.sort(key=lambda x: x[0], reverse=True)
+    for size, key, percentage in size_list:
+        space = " " * (20 - len(key))
+        print_key = key + space
+        print(print_key, ":", size, "\tMB. ", percentage, "%")

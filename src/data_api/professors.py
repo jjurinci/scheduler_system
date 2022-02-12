@@ -33,13 +33,16 @@ def get_professors_in_rasps(rasps):
     return get_professors_by_ids(professor_ids)
 
 
-def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors_ids):
+def get_professors_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rasps):
+    professor_ids = set(rasp.professor_id for rasp in rasps)
+    prof_constraints  = get_professors_constraints()
+
     #1 = [prof.id][week,day,hour] IS OCCUPIED, 0 = [prof.id][week,day,hour] IS FREE
-    professor_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS,5,NUM_HOURS), dtype=np.uint8))
+    professor_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS,NUM_DAYS,NUM_HOURS), dtype=np.uint8))
     done_professors = {}
     for avail in prof_constraints:
         prof_id = avail["professor_id"]
-        if prof_id not in professors_ids:
+        if prof_id not in professor_ids:
             continue
 
         done_professors[prof_id] = True
@@ -57,7 +60,7 @@ def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors_i
             professor_occupied[prof_id][week][3] = thursday
             professor_occupied[prof_id][week][4] = friday
 
-    for prof_id in professors_ids:
+    for prof_id in professor_ids:
         if prof_id not in done_professors:
             for week in range(NUM_WEEKS):
                 professor_occupied[prof_id][week][0] = [0]*16
@@ -66,7 +69,7 @@ def get_professors_occupied(NUM_WEEKS, NUM_HOURS, prof_constraints, professors_i
                 professor_occupied[prof_id][week][3] = [0]*16
                 professor_occupied[prof_id][week][4] = [0]*16
 
-    return professor_occupied
+    return dict(**professor_occupied)
 
 
 def transform_prof_time(ugly_time):

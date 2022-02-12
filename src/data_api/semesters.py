@@ -1,8 +1,10 @@
 import json
-from collections import Counter
+import numpy as np
+from collections import defaultdict, Counter
 from itertools import product
 from data_api.utilities.my_types import Semester
-import data_api.subjects as subj_api
+import data_api.semesters as seme_api
+import data_api.subjects  as subj_api
 
 def get_semesters():
     with open("database/input/semesters.json", "r") as fp:
@@ -29,6 +31,12 @@ def get_winter_semesters():
 def get_summer_semesters():
     semesters = get_semesters()
     semesters = [sem for sem in semesters if sem.season == "S"]
+    return semesters
+
+
+def get_semesters_dict():
+    semesters = get_semesters()
+    semesters = {sem.id : sem for sem in semesters}
     return semesters
 
 
@@ -93,8 +101,8 @@ def get_nasts_all_semesters(rasps, winter):
     return nasts
 
 
-def get_students_per_rasp_estimate(nasts):
-    students_estimate = Counter()
+def get_students_per_rasp_estimate_nasts(nasts):
+    students_per_rasp = Counter()
     for semester, the_nasts in nasts.items():
         if not the_nasts:
             continue
@@ -103,9 +111,62 @@ def get_students_per_rasp_estimate(nasts):
         stud_per_nast = num_students/len(the_nasts)
         for nast in the_nasts:
             margin = {rasp.id: stud_per_nast for rasp in nast}
-            students_estimate.update(margin)
+            students_per_rasp.update(margin)
 
-    for key in students_estimate:
-        students_estimate[key] = round(students_estimate[key], 2)
+    for key in students_per_rasp:
+        students_per_rasp[key] = round(students_per_rasp[key], 2)
 
-    return students_estimate
+    return students_per_rasp
+
+
+def get_students_per_rasp_estimate(rasps):
+    semester_rasps = defaultdict(lambda: set())
+    for rasp in rasps:
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in sem_ids:
+            semester_rasps[sem_id].add(rasp)
+
+    optionals_per_sem = Counter()
+    for sem_id, rasps in semester_rasps.items():
+        optionals = [rasp for rasp in rasps if sem_id in rasp.optional_in_semester_ids]
+        optionals_per_sem[sem_id] += len(optionals)
+
+    semesters = seme_api.get_semesters_dict()
+    students_per_rasp = Counter()
+    for sem_id, rasps in semester_rasps.items():
+        num_students  = semesters[sem_id].num_students
+        num_optionals = optionals_per_sem[sem_id]
+        for rasp in rasps:
+            if sem_id in rasp.mandatory_in_semester_ids:
+                students_per_rasp[rasp.id] += (num_students / rasp.total_groups)
+            elif sem_id in rasp.optional_in_semester_ids:
+                students_per_rasp[rasp.id] += (num_students / num_optionals) / rasp.total_groups
+
+    for key in students_per_rasp:
+        students_per_rasp[key] = round(students_per_rasp[key], 2)
+
+    return students_per_rasp
+
+
+def get_nasts_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rasps):
+    nasts_occupied, optionals_occupied = {}, {}
+    all_semester_ids = set()
+    for rasp in rasps:
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in sem_ids:
+            all_semester_ids.add(sem_id)
+
+    semesters = seme_api.get_semesters_dict()
+    for sem_id in all_semester_ids:
+        nasts_occupied[sem_id] = np.zeros((NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8)
+        if semesters[sem_id].has_optional_subjects:
+            optionals_occupied[sem_id] = np.zeros((NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8)
+
+    groups_occupied = {}
+    for rasp in rasps:
+        if rasp.total_groups > 1:
+            key = str(rasp.subject_id) + str(rasp.type)
+            groups_occupied[key] = {}
+
+    return nasts_occupied, optionals_occupied, groups_occupied
+

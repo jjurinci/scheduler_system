@@ -1,8 +1,7 @@
 import json
-import pandas as pd
 from dateutil.rrule import rrulestr, rrule, DAILY
 from datetime import datetime, timedelta
-from data_api.utilities.my_types import Timeblock
+from data_api.utilities.my_types import Timeblock, TimeStructure
 
 
 def get_start_end_semester():
@@ -21,7 +20,7 @@ def get_start_end_semester():
     return start_year, end_year
 
 
-def get_day_structure():
+def get_timeblocks():
     with open("database/input/day_structure.json", "r") as fp:
         day_structure = json.load(fp)["day_structure"]
 
@@ -157,5 +156,58 @@ def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL):
     return rasp_dates
 
 
-TIMEBLOCKS = get_day_structure()
+def init_rrule_objects(rasps):
+    rasp_rrules, rrule_space = {}, []
+    rrule_space = []
+    freqs = {0:"YEARLY", 1:"MONTHLY", 2:"WEEKLY", 3:"DAILY"}
+    for rasp in rasps:
+        rrule_obj = rrulestr(rasp.rrule)
+        dtstart = rrule_obj._dtstart
+        until = rrule_obj._until
+        dtstart_weekdays = all_dtstart_weekdays(dtstart) if rasp.random_dtstart_weekday else []
+
+        # At most 5 starting days defined by (week, day). Since we don't allow hour manipulation we can leave out the hour (e.g. no (week, day, hour))
+        rrule_enumeration = {}
+        if rasp.random_dtstart_weekday:
+            for dtstart_weekday in dtstart_weekdays:
+                given_week, given_day, _ = date_to_index(dtstart_weekday)
+                key = (given_week, given_day)
+                all_dates = list(get_rrule_dates(rasp.rrule, dtstart_weekday, until))
+                for i, val in enumerate(all_dates):
+                    all_dates[i] = (val[0], val[1])
+                rrule_enumeration[key] = all_dates
+
+        elif not rasp.random_dtstart_weekday:
+            all_dates = list(get_rrule_dates(rasp.rrule, dtstart, until))
+            for i, val in enumerate(all_dates):
+                all_dates[i] = (val[0], val[1])
+            rrule_enumeration[key] = all_dates
+
+        if rrule_enumeration not in rrule_space:
+            rrule_space.append(rrule_enumeration)
+
+        dtstart_weekdays = [date_to_index(dtstart_) for dtstart_ in dtstart_weekdays]
+        dtstart = date_to_index(dtstart)
+        until = date_to_index(until)
+        rasp_rrules[rasp.id] = {"DTSTART": dtstart, "UNTIL": until, "FREQ": freqs[rrule_obj._freq],
+                                "all_dates":[], "dtstart_weekdays": dtstart_weekdays,
+                                "possible_all_dates_idx": rrule_space.index(rrule_enumeration)}
+
+    return rasp_rrules, rrule_space
+
+
+def get_time_structure():
+    START_SEMESTER_DATE, END_SEMESTER_DATE = get_start_end_semester()
+    NUM_WEEKS  = weeks_between(START_SEMESTER_DATE, END_SEMESTER_DATE)
+    timeblocks = get_timeblocks()
+    NUM_DAYS   = 5
+    hour_to_index, index_to_hour = get_hour_index_structure(timeblocks)
+    NUM_HOURS = len(timeblocks)
+
+    return TimeStructure(START_SEMESTER_DATE, END_SEMESTER_DATE,
+                         NUM_WEEKS, NUM_DAYS, NUM_HOURS,
+                         timeblocks, hour_to_index, index_to_hour)
+
+
+TIMEBLOCKS = get_timeblocks()
 HOURMIN_TO_INDEX, INDEX_TO_HOUR_MIN = get_hour_index_structure(TIMEBLOCKS)

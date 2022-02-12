@@ -17,7 +17,7 @@ def analyze_room_change():
     rooms_occupied = data["rooms_occupied"]
     professors_occupied = data["professors_occupied"]
     nasts_occupied = data["nasts_occupied"]
-    students_estimate = data["students_estimate"]
+    students_per_rasp = data["students_per_rasp"]
     room_ids = list(rooms_occupied.keys())
     rooms = room_api.get_rooms_by_ids(room_ids)
 
@@ -36,9 +36,9 @@ def analyze_room_change():
             bad_room = {"roomId" : room_id, "subId": rasp.subjectId, "capacity_problem": False, "computer_problem": False, "free_time_problem": False}
 
             problems = False
-            if students_estimate[rasp] > room.capacity:
+            if students_per_rasp[rasp] > room.capacity:
                 problems = True
-                bad_room["capacity_problem"] = (True, students_estimate[rasp], room.capacity)
+                bad_room["capacity_problem"] = (True, students_per_rasp[rasp], room.capacity)
 
             if rasp.needsComputers and not room.hasComputers:
                 problems = True

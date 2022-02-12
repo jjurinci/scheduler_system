@@ -7,3 +7,6 @@ def get_fixed_timetable(rasps):
         day, hour = int(day)-1, int(hour)-1
         FIXED[rasp] = (room_id, day, hour)
     return FIXED
+
+def get_empty_timetable(rasps):
+    return {rasp:None for rasp in rasps}

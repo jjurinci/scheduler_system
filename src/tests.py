@@ -7,18 +7,19 @@ import data_api.professors     as prof_api
 import data_api.time_structure as time_api
 from collections import defaultdict
 from dateutil.rrule import rrulestr
+from data_api.utilities.get_size import print_size
 
 path = "saved_timetables/zero_timetable.pickle"
 
 with open(path, "rb") as p:
     data = pickle.load(p)
+    print_size(data)
 
     winter = True
     NUM_WEEKS, NUM_DAYS, NUM_HOURS = 17, 5, 16
     semesters_info = seme_api.get_winter_semesters_dict() if winter else seme_api.get_summer_semesters_dict()
     rasps = rasp_api.get_rasps_by_season(winter = winter)
-    nasts = seme_api.get_nasts_all_semesters(rasps, winter)
-    students_estimate = seme_api.get_students_per_rasp_estimate(nasts)
+    students_per_rasp = seme_api.get_students_per_rasp_estimate(rasps)
 
 
 def __tax_rrule_in_nasts(matrix3D, rasp, rrule_dates):
@@ -60,7 +61,7 @@ def __tax_rasp_nasts(slot, rasp, rasp_rrules, nasts_occupied, optionals_occupied
                 # Tax only if it's the first "subject_id + type" at that slot AND first optional at that slot
                 __nast_tax_rrule_optional_rasp(nasts_occupied[sem_id], optionals_occupied[sem_id], rasp, slot.hour, all_dates)
 
-            #assert groups_occupied[key][slot] >= 0
+            assert groups_occupied[key][slot] >= 0
             groups_occupied[key][slot] += 1
 
 
@@ -77,18 +78,11 @@ def check_grade_is_0(data):
             key = str(rasp.subject_id) + str(rasp.type)
             groups_occupied[key] = {}
 
-    starting_rooms = room_api.get_rooms()
-    room_capacity = room_api.get_rooms_capacity(starting_rooms)
-    computer_rooms = room_api.get_computer_rooms(starting_rooms)
-    rooms_constraints = room_api.get_rooms_constraints()
-    free_slots = room_api.get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, rooms_constraints, starting_rooms)
-
-    starting_profs_ids = set(rasp.professor_id for rasp in rasps)
-    profs_constraints = prof_api.get_professors_constraints()
+    rooms = room_api.get_rooms_dict()
 
     # Loading starting constraints
-    rooms_occupied = room_api.get_rooms_occupied(NUM_WEEKS, NUM_HOURS, free_slots, rasps)
-    profs_occupied = prof_api.get_professors_occupied(NUM_WEEKS, NUM_HOURS, profs_constraints, starting_profs_ids)
+    rooms_occupied = room_api.get_rooms_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rooms)
+    profs_occupied = prof_api.get_professors_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rasps)
 
     for rasp, slot in timetable.items():
         all_dates = rasp_rrules[rasp.id]["all_dates"]
@@ -98,11 +92,11 @@ def check_grade_is_0(data):
         __tax_rasp_nasts(slot, rasp, rasp_rrules, nasts_occupied, optionals_occupied, groups_occupied)
 
     for rasp, slot in timetable.items():
-        if room_capacity[slot.room_id] < students_estimate[rasp.id]:
+        if rooms[slot.room_id].capacity < students_per_rasp[rasp.id]:
             print(f"{rasp.id} has a capacity problem at {slot}.")
-        if slot.room_id not in computer_rooms and rasp.needs_computers:
+        if not rooms[slot.room_id].has_computers and rasp.needs_computers:
             print(f"{rasp.id} has a strong computer problem at {slot}.")
-        if slot.room_id in computer_rooms and not rasp.needs_computers:
+        if rooms[slot.room_id].has_computers and not rasp.needs_computers:
             print(f"{rasp.id} has a weak computer problem at {slot}.")
 
     rooms_occupied = dict(**rooms_occupied)
