@@ -20,14 +20,14 @@ def get_size(obj, seen=None):
     return size
 
 
-def print_size(data):
-    total = round(get_size(data) / 10**6,4)
+def print_size(state):
+    total = round(get_size(state) / 10**6,4)
     space = " " * (20 - len("TOTAL"))
     print("TOTAL" + space, ":", total, "\tMB. ", "100%")
     print("-"*20)
     size_list = []
-    for key in data:
-        size = round(get_size(data[key]) / 10**6, 4)
+    for index, key in enumerate(state._fields):
+        size = round(get_size(state[index]) / 10**6, 4)
         percentage = round((size / total) * 100, 2)
         size_list.append((size, key, percentage))
 

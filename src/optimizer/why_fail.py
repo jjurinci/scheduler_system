@@ -1,3 +1,5 @@
+import optimizer.grade_tool as grade_tool
+
 def failure_reason(state, action, slot, rasp, pure_new_slot_grade, pure_old_slot_grade):
     rasp_rrules = state.rasp_rrules
 
@@ -65,25 +67,25 @@ def failure_reason_rigorous(state, action, slot, rasp, pure_new_slot_grade):
         action["ban_dates_with_capacity_with_computers"].add(ban_slot)
 
 
-def insufficient_capacity(state, rasp, room_id):
-    rooms = state.rooms
-    students_per_rasp = state.students_per_rasp
-    return students_per_rasp[rasp.id] - rooms[room_id].capacity>0
-
-
-def insufficient_computers(state, rasp, room_id):
-    rooms = state.rooms
-    return ((not rooms[room_id].has_computers and rasp.needs_computers) or (rooms[room_id].has_computers and not rasp.needs_computers))
-
-
-def insufficient_strong_computers(state, rasp, room_id):
-    rooms = state.rooms
-    return not rooms[room_id].has_computers and rasp.needs_computers
-
-
-def insufficient_weak_computers(state, rasp, room_id):
-    rooms = state.rooms
-    return rooms[room_id].has_computers and not rasp.needs_computers
+#def insufficient_capacity(state, rasp, room_id):
+#    rooms = state.rooms
+#    students_per_rasp = state.students_per_rasp
+#    return students_per_rasp[rasp.id] - rooms[room_id].capacity>0
+#
+#
+#def insufficient_computers(state, rasp, room_id):
+#    rooms = state.rooms
+#    return ((not rooms[room_id].has_computers and rasp.needs_computers) or (rooms[room_id].has_computers and not rasp.needs_computers))
+#
+#
+#def insufficient_strong_computers(state, rasp, room_id):
+#    rooms = state.rooms
+#    return not rooms[room_id].has_computers and rasp.needs_computers
+#
+#
+#def insufficient_weak_computers(state, rasp, room_id):
+#    rooms = state.rooms
+#    return rooms[room_id].has_computers and not rasp.needs_computers
 
 
 def is_skippable(state, slot, rasp, action):
@@ -94,17 +96,17 @@ def is_skippable(state, slot, rasp, action):
 
     if ban_slot in action["ban_dates"]:
         return True
-    if action["ban_capacity"] and insufficient_capacity(state, rasp, room_id):
+    if action["ban_capacity"] and grade_tool.is_capacity_problematic(state, rasp, room_id):
         return True
-    if action["ban_computers"] and insufficient_computers(state, rasp, room_id):
+    if action["ban_computers"] and grade_tool.is_computer_problematic(state, rasp, room_id):
         return True
-    if ban_slot in action["ban_capacity_with_dates"] and insufficient_capacity(state, rasp, room_id):
+    if ban_slot in action["ban_capacity_with_dates"] and grade_tool.is_capacity_problematic(state, rasp, room_id):
         return True
-    if ban_slot in action["ban_computers_with_dates"] and insufficient_computers(state, rasp, room_id):
+    if ban_slot in action["ban_computers_with_dates"] and grade_tool.is_computer_problematic(state, rasp, room_id):
         return True
-    if action["ban_capacity_with_computers"] and insufficient_computers(state, rasp, room_id) and insufficient_capacity(state, rasp, room_id):
+    if action["ban_capacity_with_computers"] and grade_tool.is_computer_problematic(state, rasp, room_id) and grade_tool.is_capacity_problematic(state, rasp, room_id):
         return True
-    if ban_slot in action["ban_dates_with_capacity_with_computers"] and insufficient_capacity(state, rasp, room_id) and insufficient_computers(state, rasp, room_id):
+    if ban_slot in action["ban_dates_with_capacity_with_computers"] and grade_tool.is_capacity_problematic(state, rasp, room_id) and grade_tool.is_computer_problematic(state, rasp, room_id):
         return True
     return False
 

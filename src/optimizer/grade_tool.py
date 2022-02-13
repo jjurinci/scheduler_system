@@ -1,16 +1,23 @@
 import numpy as np
 
-def is_computer_problematic(state, rasp, room_id):
+def is_weak_computer_problematic(state, rasp, room_id):
     rooms = state.rooms
+    return rooms[room_id].has_computers and not rasp.needs_computers
 
-    return (not rooms[room_id].has_computers and rasp.needs_computers) or \
-           (rooms[room_id].has_computers and not rasp.needs_computers)
+
+def is_strong_computer_problematic(state, rasp, room_id):
+    rooms = state.rooms
+    return not rooms[room_id].has_computers and rasp.needs_computers
+
+
+def is_computer_problematic(state, rasp, room_id):
+    return is_strong_computer_problematic(state, rasp, room_id) or \
+           is_weak_computer_problematic(state, rasp, room_id)
 
 
 def is_capacity_problematic(state, rasp, room_id):
     rooms = state.rooms
     students_per_rasp = state.students_per_rasp
-
     return students_per_rasp[rasp.id] - rooms[room_id].capacity > 0
 
 
@@ -60,8 +67,7 @@ def init_grades(rasps, rooms):
         for sem_id in rasp_sem_ids:
             all_sem_ids.add(sem_id)
 
-    grade_obj   = {"totalScore": 0, "roomScore": 0, "professorScore": 0,
-                   "capacityScore": 0, "computerScore": 0, "nastScore": 0}
+    grade_obj   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
     grade_rooms = {"roomScore": 0, "capacityScore": 0, "computerScore": 0}
     grades = {"rooms": {room_id:grade_rooms.copy() for room_id in rooms},
               "profs": {rasp.professor_id:0 for rasp in rasps},
@@ -78,8 +84,9 @@ def count_all_constraints(state, slot, rasp):
     grade_obj["roomScore"]      = count_rrule_in_matrix3D(state, rasp, room_occupied)
     grade_obj["professorScore"] = count_rrule_in_matrix3D(state, rasp, prof_occupied)
     grade_obj["nastScore"]      = count_rrule_in_nasts(state, slot, rasp)
-    grade_obj["capacityScore"]  = -30 * insufficient_capacity(state, rasp, slot.room_id)
-    grade_obj["computerScore"]  = -30 * insufficient_strong_computers(state, rasp, slot.room_id) + (-3 * insufficient_weak_computers(state, rasp, slot.room_id))
+    grade_obj["capacityScore"]  = -30 * is_capacity_problematic(state, rasp, slot.room_id)
+    grade_obj["computerScore"]  = -30 * is_strong_computer_problematic(state, rasp, slot.room_id) + \
+                                  (-3 * is_weak_computer_problematic(state, rasp, slot.room_id))
     grade_obj["totalScore"]     = sum(grade_obj.values())
     return grade_obj
 
@@ -129,23 +136,3 @@ def count_rrule_in_nasts(state, slot, rasp):
             elif not rasp_mandatory and groups_occupied[key][slot] == 0:
                 grade += count_rrule_in_optional_rasp(state, rasp, sem_id)
     return grade
-
-
-def insufficient_capacity(state, rasp, room_id):
-    rooms = state.rooms
-    students_per_rasp = state.students_per_rasp
-    return students_per_rasp[rasp.id] - rooms[room_id].capacity >0
-
-
-def insufficient_computers(state, rasp, room_id):
-    rooms = state.rooms
-    return ((not rooms[room_id].has_computers and rasp.needs_computers) or (rooms[room_id].has_computers and not rasp.needs_computers))
-
-
-def insufficient_strong_computers(state, rasp, room_id):
-    rooms = state.rooms
-    return not rooms[room_id].has_computers and rasp.needs_computers
-
-def insufficient_weak_computers(state, rasp, room_id):
-    rooms = state.rooms
-    return rooms[room_id].has_computers and not rasp.needs_computers

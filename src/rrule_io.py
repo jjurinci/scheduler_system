@@ -40,7 +40,6 @@ def request_solver():
 
             if state.grades["all"]["totalScore"] == 0:
                 goods += 1
-                continue
                 name = "saved_timetables/zero_timetable.pickle"
                 print(f"Saving sample to {name}")
                 with open(name, "wb") as p:
