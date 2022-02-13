@@ -153,15 +153,18 @@ def all_dates_correct_start(state):
 
 
 def correct_rrules(state):
-    timetable   = state.timetable
-    rasp_rrules = state.rasp_rrules
+    timetable     = state.timetable
+    rasp_rrules   = state.rasp_rrules
+    hour_to_index = state.time_structure.hour_to_index
+    index_to_hour = state.time_structure.index_to_hour
+    NUM_HOURS     = state.time_structure.NUM_HOURS
 
     for rasp, _ in timetable.items():
         rrule = rrulestr(rasp.rrule)
 
         chosen_dt_week, chosen_dt_day, chosen_dt_hour    = rasp_rrules[rasp.id]["DTSTART"]
         chosen_un_week, chosen_un_day, chosen_un_hour    = rasp_rrules[rasp.id]["UNTIL"]
-        correct_dt_week, correct_dt_day, correct_dt_hour = time_api.date_to_index(rrule._dtstart)
+        correct_dt_week, correct_dt_day, correct_dt_hour = time_api.date_to_index(rrule._dtstart, hour_to_index)
 
         if rasp.fixed_hour and chosen_dt_hour != correct_dt_hour:
             print(rrule._dtstart)
@@ -172,7 +175,7 @@ def correct_rrules(state):
         # random=1 -> Check if chosen DTSTART falls in the correct random range
         if rasp.random_dtstart_weekday:
             viable_dtstarts = time_api.all_dtstart_weekdays(rrule._dtstart)
-            viable_dtstarts = [time_api.date_to_index(dt) for dt in viable_dtstarts]
+            viable_dtstarts = [time_api.date_to_index(dt, hour_to_index) for dt in viable_dtstarts]
             good = False
             for week, day, _ in viable_dtstarts:
                 if week == chosen_dt_week and day == chosen_dt_day:
@@ -186,9 +189,9 @@ def correct_rrules(state):
             print(f"{rasp.id} has {rasp.random_dtstart_weekday=} and {chosen_dt_week=} and {correct_dt_week=} and {chosen_dt_day=} and {correct_dt_day=}")
 
         # At this point: *chosen* DTSTART week,day,hr is correct
-        chosen_dt_date = time_api.index_to_date(chosen_dt_week, chosen_dt_day, chosen_dt_hour)
-        chosen_un_date = time_api.index_to_date(chosen_un_week, chosen_un_day, chosen_un_hour)
-        correct_all_dates = time_api.get_rrule_dates(rasp.rrule, chosen_dt_date, chosen_un_date)
+        chosen_dt_date = time_api.index_to_date(chosen_dt_week, chosen_dt_day, chosen_dt_hour, index_to_hour, NUM_HOURS)
+        chosen_un_date = time_api.index_to_date(chosen_un_week, chosen_un_day, chosen_un_hour, index_to_hour, NUM_HOURS)
+        correct_all_dates = time_api.get_rrule_dates(rasp.rrule, chosen_dt_date, chosen_un_date, hour_to_index)
         chosen_all_dates = rasp_rrules[rasp.id]["all_dates"]
 
         assert len(correct_all_dates) == len(chosen_all_dates)

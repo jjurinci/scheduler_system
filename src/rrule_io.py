@@ -26,7 +26,7 @@ def request_solver():
             grades                   = grade_tool.init_grades(rasps, rooms)
             timetable                = tabl_api.get_empty_timetable(rasps)
             mutable_constraints      = cons_api.get_mutable_constraints(initial_constraints)
-            rasp_rrules, rrule_space = time_api.init_rrule_objects(rasps)
+            rasp_rrules, rrule_space = time_api.init_rrule_objects(rasps, time_structure)
 
             state = State(is_winter, semesters, time_structure, rooms, students_per_rasp,
                           initial_constraints, mutable_constraints,

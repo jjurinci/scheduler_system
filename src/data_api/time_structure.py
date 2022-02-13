@@ -57,22 +57,18 @@ def weeks_between(start_date, end_date):
     return ((end_date-start_date).days // 7) + 1
 
 
-def weeks_from_start(date):
+def weeks_from_start(date : datetime):
     START_SEMESTER_DATE = datetime(2021,10,4)
     return (date - START_SEMESTER_DATE).days // 7
 
 
-def index_to_date(week, day, hour):
+def index_to_date(week: int, day: int, hour: int, index_to_hour: dict, NUM_HOURS: int):
     START_SEMESTER_DATE, _ = get_start_end_semester()
-    timeblocks = TIMEBLOCKS
-    NUM_HOURS = len(timeblocks)
-
-    index_to_hourmin = INDEX_TO_HOUR_MIN
 
     # 2 (3rd) week, 1 tuesday, 13 (14th) hour
     hr, mins = 0, 0
     if hour >= 0 and hour < NUM_HOURS:
-        hourmin = index_to_hourmin[hour]
+        hourmin = index_to_hour[hour]
         hr, mins = int(hourmin[:2]), int(hourmin[3:5])
 
     date = START_SEMESTER_DATE.replace(hour = hr, minute = mins)
@@ -86,8 +82,7 @@ def index_to_date(week, day, hour):
     return date
 
 
-def date_to_index(date : datetime):
-    hourmin_to_index = HOURMIN_TO_INDEX
+def date_to_index(date : datetime, hour_to_index: dict):
     week = weeks_from_start(date)
 
     day = date.weekday() # in Python 0 is Monday, 6 is Sunday
@@ -98,7 +93,7 @@ def date_to_index(date : datetime):
 
     hour = -1
     if hourmin != "00:00":
-        hour = hourmin_to_index[hourmin]
+        hour = hour_to_index[hourmin]
 
     return week,day,hour
 
@@ -117,7 +112,7 @@ def get_rrule_until(rasp_rrule):
         return last_date
 
 
-def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL):
+def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL, hour_to_index):
     old_dtstart_str, old_until_str = None, None
     for line in rasp_rrule.split():
         name, value = line.split(':', 1)
@@ -151,12 +146,13 @@ def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL):
                        byyearday = byyearday, byweekno = byweekno,
                        byweekday = byweekday)
 
-    rasp_dates = tuple(map(date_to_index, rasp_dates))
-
+    rasp_dates = tuple(date_to_index(date, hour_to_index) for date in rasp_dates)
     return rasp_dates
 
 
-def init_rrule_objects(rasps):
+def init_rrule_objects(rasps, time_structure):
+    hour_to_index = time_structure.hour_to_index
+
     rasp_rrules, rrule_space = {}, []
     rrule_space = []
     freqs = {0:"YEARLY", 1:"MONTHLY", 2:"WEEKLY", 3:"DAILY"}
@@ -170,15 +166,15 @@ def init_rrule_objects(rasps):
         rrule_enumeration = {}
         if rasp.random_dtstart_weekday:
             for dtstart_weekday in dtstart_weekdays:
-                given_week, given_day, _ = date_to_index(dtstart_weekday)
+                given_week, given_day, _ = date_to_index(dtstart_weekday, hour_to_index)
                 key = (given_week, given_day)
-                all_dates = list(get_rrule_dates(rasp.rrule, dtstart_weekday, until))
+                all_dates = list(get_rrule_dates(rasp.rrule, dtstart_weekday, until, hour_to_index))
                 for i, val in enumerate(all_dates):
                     all_dates[i] = (val[0], val[1])
                 rrule_enumeration[key] = all_dates
 
         elif not rasp.random_dtstart_weekday:
-            all_dates = list(get_rrule_dates(rasp.rrule, dtstart, until))
+            all_dates = list(get_rrule_dates(rasp.rrule, dtstart, until, hour_to_index))
             for i, val in enumerate(all_dates):
                 all_dates[i] = (val[0], val[1])
             rrule_enumeration[key] = all_dates
@@ -186,9 +182,9 @@ def init_rrule_objects(rasps):
         if rrule_enumeration not in rrule_space:
             rrule_space.append(rrule_enumeration)
 
-        dtstart_weekdays = [date_to_index(dtstart_) for dtstart_ in dtstart_weekdays]
-        dtstart = date_to_index(dtstart)
-        until = date_to_index(until)
+        dtstart_weekdays = [date_to_index(dtstart_, hour_to_index) for dtstart_ in dtstart_weekdays]
+        dtstart = date_to_index(dtstart, hour_to_index)
+        until = date_to_index(until, hour_to_index)
         rasp_rrules[rasp.id] = {"DTSTART": dtstart, "UNTIL": until, "FREQ": freqs[rrule_obj._freq],
                                 "all_dates":[], "dtstart_weekdays": dtstart_weekdays,
                                 "possible_all_dates_idx": rrule_space.index(rrule_enumeration)}
@@ -209,5 +205,5 @@ def get_time_structure():
                          timeblocks, hour_to_index, index_to_hour)
 
 
-TIMEBLOCKS = get_timeblocks()
-HOURMIN_TO_INDEX, INDEX_TO_HOUR_MIN = get_hour_index_structure(TIMEBLOCKS)
+#TIMEBLOCKS = get_timeblocks()
+#HOURMIN_TO_INDEX, INDEX_TO_HOUR_MIN = get_hour_index_structure(TIMEBLOCKS)
