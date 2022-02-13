@@ -35,7 +35,7 @@ def request_solver():
             optimizer.iterate(state, 1000)
 
             if state.grades["all"]["totalScore"] != 0:
-                print(state.grades)
+                #print(state.grades)
                 bads += 1
 
             if state.grades["all"]["totalScore"] == 0:

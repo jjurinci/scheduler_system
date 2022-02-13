@@ -124,6 +124,47 @@ def no_mandatory_optional_collisions(state):
                     assert not (mand_val >= 1 and opti_val >= 1), "Mandatory and optional rasps collide"
 
 
+def no_subject_type_collisions(state):
+    timetable   = state.timetable
+    rasp_rrules = state.rasp_rrules
+
+    rasp_keys = {}
+    for rasp in timetable:
+        if rasp.subject_id not in rasp_keys:
+            rasp_keys[rasp.subject_id] = set()
+
+        key = str(rasp.subject_id) + str(rasp.type)
+        rasp_keys[rasp.subject_id].add(key)
+
+    seen = defaultdict(lambda: set())
+    for rasp, _ in timetable.items():
+        own_key = str(rasp.subject_id) + str(rasp.type)
+        all_dates = rasp_rrules[rasp.id]["all_dates"]
+
+        for week, day, hour in all_dates:
+            seen[own_key].add((week, day, hour))
+
+    for rasp, _ in timetable.items():
+        own_key = str(rasp.subject_id) + str(rasp.type)
+        other_keys = rasp_keys[rasp.subject_id]
+
+        all_dates = rasp_rrules[rasp.id]["all_dates"]
+        for week, day, hour in all_dates:
+            bad = False
+            own_slot = (week, day, hour)
+            for other_key in other_keys:
+                if other_key == own_key:
+                    continue
+                if own_slot in seen[other_key]:
+                    print(f"{rasp.id=} {rasp.subject_id=} {rasp.group=} has a type collision at {week=} {day=} {hour=}.")
+                    for other_key in other_keys:
+                        print(f"ALL KEYS: {other_key=}")
+                    bad = True
+            if bad:
+                break
+
+
+
 def all_rasps_have_dates(state):
     timetable = state.timetable
     rasp_rrules = state.rasp_rrules
@@ -202,6 +243,7 @@ def correct_rrules(state):
 
 all_rasps_have_dates(state)
 all_dates_correct_start(state)
-no_mandatory_optional_collisions(state)
 check_grade_is_0(state)
+no_mandatory_optional_collisions(state)
+no_subject_type_collisions(state)
 correct_rrules(state)
