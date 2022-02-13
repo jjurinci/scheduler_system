@@ -1,15 +1,14 @@
 import pickle
 import numpy as np
 from tabulate import tabulate
-import data_api.time_structure as time_api
 import datetime
 
 
 def load_timetable():
     name = "saved_timetables/zero_timetable.pickle"
     with open(name, "rb") as f:
-        data = pickle.load(f)
-    return data
+        state = pickle.load(f)
+    return state
 
 
 def show_object_str(show_object):
@@ -50,13 +49,15 @@ def get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id="", by_room_id=
 
 
 def print_timetable():
-    data = load_timetable()
-    timetable = data["timetable"]
-    rasp_rrules = data["rasp_rrules"]
+    state = load_timetable()
+    timetable = state.timetable
+    rasp_rrules = state.rasp_rrules
     rasps = timetable.keys()
 
-    START_SEMESTER_DATE, _ = time_api.get_start_end_semester()
-    NUM_WEEKS, NUM_DAYS, NUM_HOURS = 17, 5, 16
+    START_SEMESTER_DATE = state.time_structure.START_SEMESTER_DATE
+    NUM_WEEKS = state.time_structure.NUM_WEEKS
+    NUM_DAYS  = state.time_structure.NUM_DAYS
+    NUM_HOURS = state.time_structure.NUM_HOURS
     schedule_matrix = np.empty(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=object)
 
     for week in range(NUM_WEEKS):
