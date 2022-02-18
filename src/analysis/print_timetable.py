@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 from tabulate import tabulate
 import datetime
+from data_api.utilities.get_size import get_size
 
 
 def load_timetable():

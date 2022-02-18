@@ -162,11 +162,5 @@ def get_nasts_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rasps):
         if semesters[sem_id].has_optional_subjects:
             optionals_occupied[sem_id] = np.zeros((NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8)
 
-    groups_occupied = {}
-    for rasp in rasps:
-        if rasp.total_groups > 1:
-            key = str(rasp.subject_id) + str(rasp.type)
-            groups_occupied[key] = {}
-
-    return nasts_occupied, optionals_occupied, groups_occupied
+    return nasts_occupied, optionals_occupied
 

@@ -22,11 +22,9 @@ TimeStructure = namedtuple('TimeStructure', ['START_SEMESTER_DATE', 'END_SEMESTE
                                              'timeblocks', 'hour_to_index', 'index_to_hour'])
 
 InitialConstraints = namedtuple('InitialConstraints', ['rooms_occupied', 'profs_occupied',
-                                                       'nasts_occupied', 'optionals_occupied',
-                                                       'groups_occupied'])
+                                                       'nasts_occupied', 'optionals_occupied'])
 MutableConstraints = namedtuple('MutableConstraints', ['rooms_occupied', 'profs_occupied',
-                                                       'nasts_occupied', 'optionals_occupied',
-                                                       'groups_occupied'])
+                                                       'nasts_occupied', 'optionals_occupied'])
 
 RaspRRULES = namedtuple('RaspRRULES', ["DTSTART", "UNTIL", "FREQ",
                                        "all_dates", "dtstart_weekdays",
@@ -39,4 +37,5 @@ State = namedtuple('State',  ['is_winter','semesters',
                               'initial_constraints',
                               'mutable_constraints',
                               'timetable', 'grades',
-                              'rasp_rrules', 'rrule_space'])
+                              'rasp_rrules', 'rrule_space',
+                              'groups', 'subject_types'])

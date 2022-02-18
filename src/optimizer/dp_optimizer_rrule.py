@@ -1,6 +1,5 @@
 import random
 from tqdm import tqdm
-from data_api.utilities.get_size import get_size
 import optimizer.grade_tool          as grade_tool
 import optimizer.tax_tool.tax_tool   as tax_tool
 import optimizer.rasp_slots          as rasp_slots

@@ -1,4 +1,5 @@
 import numpy as np
+import data_api.constraints as cons_api
 
 def is_weak_computer_problematic(state, rasp, room_id):
     rooms = state.rooms
@@ -83,7 +84,7 @@ def count_all_constraints(state, slot, rasp):
     grade_obj                   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
     grade_obj["roomScore"]      = count_rrule_in_matrix3D(state, rasp, room_occupied)
     grade_obj["professorScore"] = count_rrule_in_matrix3D(state, rasp, prof_occupied)
-    grade_obj["nastScore"]      = count_rrule_in_nasts(state, slot, rasp)
+    grade_obj["nastScore"]      = count_rrule_in_nasts(state, rasp)
     grade_obj["capacityScore"]  = -30 * is_capacity_problematic(state, rasp, slot.room_id)
     grade_obj["computerScore"]  = -30 * is_strong_computer_problematic(state, rasp, slot.room_id) + \
                                   (-3 * is_weak_computer_problematic(state, rasp, slot.room_id))
@@ -97,42 +98,43 @@ def count_rrule_in_matrix3D(state, rasp, matrix3D):
                  for week,day,hour in all_dates)
 
 
-def count_rrule_in_optional_rasp(state, rasp, sem_id):
+def count_rrule_in_mandatory_rasp(state, rasp, nast_occupied):
     all_dates = state.rasp_rrules[rasp.id]["all_dates"]
-    nast_occupied = state.mutable_constraints.nasts_occupied[sem_id]
-    optional_occupied = state.mutable_constraints.optionals_occupied[sem_id]
+    own_group_dates = cons_api.get_own_groups_all_dates(state, rasp)
 
     cnt = 0
     for week, day, hour in all_dates:
         for hr in range(hour, hour + rasp.duration):
-            if optional_occupied[week, day, hr] == 0.0:
-                if nast_occupied[week, day, hr]+1 > 1:
-                    cnt += 1
-    return -30 * cnt
+            if (week, day, hr) not in own_group_dates:
+                cnt += np.sum(nast_occupied[week, day, hr]+1 > 1)
+    return cnt * -30
 
 
-def count_rrule_in_nasts(state, slot, rasp):
+def count_rrule_in_optional_rasp(state, rasp, sem_id):
+    all_dates = state.rasp_rrules[rasp.id]["all_dates"]
+    nast_occupied = state.mutable_constraints.nasts_occupied[sem_id]
+    optional_occupied = state.mutable_constraints.optionals_occupied[sem_id]
+    other_groups_dates = cons_api.get_other_groups_all_dates(state, rasp)
+
+    cnt = 0
+    for week, day, hour in all_dates:
+        for hr in range(hour, hour + rasp.duration):
+            if optional_occupied[week, day, hr] == 0 or (week, day, hr) in other_groups_dates:
+                cnt += np.sum(nast_occupied[week, day, hr] + 1 >1)
+    return cnt * -30
+
+
+def count_rrule_in_nasts(state, rasp):
     nasts_occupied = state.mutable_constraints.nasts_occupied
-    groups_occupied = state.mutable_constraints.groups_occupied
     semesters = state.semesters
 
     sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
-    key = str(rasp.subject_id) + str(rasp.type)
     grade = 0
     for sem_id in sem_ids:
         rasp_mandatory = True if sem_id in rasp.mandatory_in_semester_ids else False
         parallel_optionals = True if semesters[sem_id].has_optional_subjects == 1 else False
-        if rasp.total_groups == 1:
-            if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
-                grade += count_rrule_in_matrix3D(state, rasp, nasts_occupied[sem_id])
-            elif not rasp_mandatory and parallel_optionals:
-                grade += count_rrule_in_optional_rasp(state, rasp, sem_id)
-
-        elif rasp.total_groups > 1:
-            if slot not in groups_occupied[key]:
-                groups_occupied[key][slot] = 0
-            if rasp_mandatory and groups_occupied[key][slot] == 0:
-                grade += count_rrule_in_matrix3D(state, rasp, nasts_occupied[sem_id])
-            elif not rasp_mandatory and groups_occupied[key][slot] == 0:
-                grade += count_rrule_in_optional_rasp(state, rasp, sem_id)
+        if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
+            grade += count_rrule_in_mandatory_rasp(state, rasp, nasts_occupied[sem_id])
+        elif not rasp_mandatory and parallel_optionals:
+            grade += count_rrule_in_optional_rasp(state, rasp, sem_id)
     return grade

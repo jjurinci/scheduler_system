@@ -8,6 +8,7 @@ import data_api.constraints    as cons_api
 import optimizer.grade_tool    as grade_tool
 import optimizer.dp_optimizer_rrule as optimizer
 from data_api.utilities.my_types import State
+from data_api.utilities.get_size import get_size
 
 def request_solver():
     # Simulating data that user would send
@@ -18,6 +19,9 @@ def request_solver():
     rooms                    = room_api.get_rooms_dict()
     time_structure           = time_api.get_time_structure()
     initial_constraints      = cons_api.get_initial_constraints(time_structure, rooms, rasps)
+
+    groups = cons_api.get_type_rasps(rasps)
+    subject_types = cons_api.get_subject_types(rasps)
 
     goods, bads = 0,0
     for _ in range(5):
@@ -30,7 +34,8 @@ def request_solver():
 
             state = State(is_winter, semesters, time_structure, rooms, students_per_rasp,
                           initial_constraints, mutable_constraints,
-                          timetable, grades, rasp_rrules, rrule_space)
+                          timetable, grades, rasp_rrules, rrule_space,
+                          groups, subject_types)
 
             optimizer.iterate(state, 1000)
 
@@ -43,6 +48,7 @@ def request_solver():
                 name = "saved_timetables/zero_timetable.pickle"
                 print(f"Saving sample to {name}")
                 with open(name, "wb") as p:
+                    print(get_size(state) / 10**6)
                     pickle.dump(state, p)
                 break
 

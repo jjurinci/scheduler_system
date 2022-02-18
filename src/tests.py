@@ -3,15 +3,17 @@ import numpy as np
 import data_api.time_structure as time_api
 from collections import defaultdict
 from dateutil.rrule import rrulestr
-from data_api.utilities.get_size import print_size
+from data_api.utilities.get_size import print_size, get_size
 from data_api.utilities.my_types import State, MutableConstraints
 from optimizer.tax_tool import tax_tool
 import optimizer.grade_tool as grade_tool
+import data_api.constraints as cons_api
 
 path = "saved_timetables/zero_timetable.pickle"
 
 with open(path, "rb") as p:
     state = pickle.load(p)
+    print(get_size(state) / 10**6)
     print_size(state)
 
 
@@ -28,16 +30,14 @@ def check_grade_is_0(state):
     init_profs_occupied     = {k:v.copy() for k,v in state.initial_constraints.profs_occupied.items()}
     init_nasts_occupied     = {k:v.copy() for k,v in state.initial_constraints.nasts_occupied.items()}
     init_optionals_occupied = {k:v.copy() for k,v in state.initial_constraints.optionals_occupied.items()}
-    init_groups_occupied    = {k:v.copy() for k,v in state.initial_constraints.groups_occupied.items()}
 
     test_mutable_constraints = MutableConstraints(init_rooms_occupied, init_profs_occupied,
-                                                  init_nasts_occupied, init_optionals_occupied,
-                                                  init_groups_occupied)
+                                                  init_nasts_occupied, init_optionals_occupied)
 
     test_state = State(state.is_winter, state.semesters, state.time_structure,
                        state.rooms, state.students_per_rasp, state.initial_constraints,
                        test_mutable_constraints, state.timetable, grade_tool.init_grades(rasps, rooms),
-                       state.rasp_rrules, state.rrule_space)
+                       state.rasp_rrules, state.rrule_space, state.groups, state.subject_types)
 
     for rasp, slot in timetable.items():
         tax_tool.tax_all_constraints(test_state, slot, rasp)
@@ -103,16 +103,18 @@ def no_mandatory_optional_collisions(state):
     optionals_occupied = defaultdict(lambda: np.zeros(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8))
 
     for rasp, _ in timetable.items():
+        own_group_dates = cons_api.get_own_groups_all_dates(state, rasp)
         all_dates = rasp_rrules[rasp.id]["all_dates"]
         sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
         for sem_id in sem_ids:
             rasp_mandatory = True if sem_id in rasp.mandatory_in_semester_ids else False
             for week, day, hour in all_dates:
-                if rasp_mandatory:
-                    mandatory_occupied[sem_id][week, day, hour:(hour + rasp.duration)] += 1
-                    assert all(mandatory_occupied[sem_id][week, day, hour:(hour + rasp.duration)]<=1), "Mandatory rasps collide"
-                else:
-                    optionals_occupied[sem_id][week, day, hour:(hour + rasp.duration)] += 1
+                for hr in range(hour, hour + rasp.duration):
+                    if rasp_mandatory and (week, day, hr) not in own_group_dates:
+                        mandatory_occupied[sem_id][week, day, hr] += 1
+                    elif not rasp_mandatory:
+                        optionals_occupied[sem_id][week, day, hr] += 1
+                assert all(mandatory_occupied[sem_id][week, day, hour:(hour + rasp.duration)]<=1), f"Mandatory rasps collide at {sem_id}"
 
     all_sem_ids = set([sem_id for rasp in timetable for sem_id in rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids])
     for sem_id in all_sem_ids:
@@ -121,7 +123,7 @@ def no_mandatory_optional_collisions(state):
                 for hour in range(NUM_HOURS):
                     mand_val = mandatory_occupied[sem_id][week, day, hour]
                     opti_val = optionals_occupied[sem_id][week, day, hour]
-                    assert not (mand_val >= 1 and opti_val >= 1), "Mandatory and optional rasps collide"
+                    assert not (mand_val >= 1 and opti_val >= 1), f"Mandatory and optional rasps collide at {sem_id}"
 
 
 def no_subject_type_collisions(state):
