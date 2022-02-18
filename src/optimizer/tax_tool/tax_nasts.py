@@ -9,7 +9,7 @@ def tax_rrule_in_nasts(state, rasp):
         parallel_optionals = True if semesters[sem_id].has_optional_subjects == 1 else False
         if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
             tax_rrule_in_nasts_mandatory(state, sem_id, rasp)
-        if not rasp_mandatory and parallel_optionals:
+        elif not rasp_mandatory and parallel_optionals:
             tax_rrule_in_nasts_optional(state, sem_id, rasp)
 
 
@@ -21,7 +21,7 @@ def untax_rrule_in_nasts(state, rasp):
         parallel_optionals = True if semesters[sem_id].has_optional_subjects == 1 else False
         if rasp_mandatory or (not rasp_mandatory and not parallel_optionals):
             untax_rrule_in_nasts_mandatory(state, sem_id, rasp)
-        if not rasp_mandatory and parallel_optionals:
+        elif not rasp_mandatory and parallel_optionals:
             untax_rrule_in_nasts_optional(state, sem_id, rasp)
 
 

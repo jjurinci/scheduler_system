@@ -8,6 +8,7 @@ from data_api.utilities.my_types import State, MutableConstraints
 from optimizer.tax_tool import tax_tool
 import optimizer.grade_tool as grade_tool
 import data_api.constraints as cons_api
+import optimizer.rasp_slots as rasp_slots
 
 path = "saved_timetables/zero_timetable.pickle"
 
@@ -39,7 +40,12 @@ def check_grade_is_0(state):
                        test_mutable_constraints, state.timetable, grade_tool.init_grades(rasps, rooms),
                        state.rasp_rrules, state.rrule_space, state.groups, state.subject_types)
 
+    # rasp_rrules[all_dates] is already set to parallel groups so the tax algo will read wrong
+    for rasp in timetable:
+        test_state.rasp_rrules[rasp.id]["all_dates"] = []
+
     for rasp, slot in timetable.items():
+        rasp_slots.update_rasp_rrules(test_state, slot, rasp)
         tax_tool.tax_all_constraints(test_state, slot, rasp)
 
     for rasp, slot in timetable.items():

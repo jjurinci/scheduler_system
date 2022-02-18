@@ -78,8 +78,8 @@ def init_grades(rasps, rooms):
 
 
 def count_all_constraints(state, slot, rasp):
-    room_occupied     = state.mutable_constraints.rooms_occupied[slot.room_id]
-    prof_occupied     = state.mutable_constraints.profs_occupied[rasp.professor_id]
+    room_occupied = state.mutable_constraints.rooms_occupied[slot.room_id]
+    prof_occupied = state.mutable_constraints.profs_occupied[rasp.professor_id]
 
     grade_obj                   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
     grade_obj["roomScore"]      = count_rrule_in_matrix3D(state, rasp, room_occupied)
@@ -107,6 +107,8 @@ def count_rrule_in_mandatory_rasp(state, rasp, nast_occupied):
         for hr in range(hour, hour + rasp.duration):
             if (week, day, hr) not in own_group_dates:
                 cnt += np.sum(nast_occupied[week, day, hr]+1 > 1)
+            else:
+                cnt += np.sum(nast_occupied[week, day, hr] > 1)
     return cnt * -30
 
 
@@ -120,7 +122,9 @@ def count_rrule_in_optional_rasp(state, rasp, sem_id):
     for week, day, hour in all_dates:
         for hr in range(hour, hour + rasp.duration):
             if optional_occupied[week, day, hr] == 0 or (week, day, hr) in other_groups_dates:
-                cnt += np.sum(nast_occupied[week, day, hr] + 1 >1)
+                cnt += np.sum(nast_occupied[week, day, hr] + 1 > 1)
+            else:
+                cnt += np.sum(nast_occupied[week, day, hr] > 1)
     return cnt * -30
 
 

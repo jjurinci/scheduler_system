@@ -49,7 +49,9 @@ def get_own_groups_all_dates(state, rasp):
     own_group_dates = set()
     for rasp_id in own_groups:
         if rasp_id != rasp.id:
-            own_group_dates |= set(rasp_rrules[rasp_id]["all_dates"])
+            for week, day, hour in rasp_rrules[rasp_id]["all_dates"]:
+                for hr in range(hour, hour + rasp.duration):
+                    own_group_dates.add((week, day, hr))
     return own_group_dates
 
 
@@ -65,7 +67,9 @@ def get_other_groups_all_dates(state, rasp):
     for other_type in other_types:
         type_groups = groups[other_type]
         for rasp_id in type_groups:
-            other_all_dates |= set(rasp_rrules[rasp_id]["all_dates"])
+            for week, day, hour in rasp_rrules[rasp_id]["all_dates"]:
+                for hr in range(hour, hour + rasp.duration):
+                    other_all_dates.add((week, day, hr))
     return other_all_dates
 
 
