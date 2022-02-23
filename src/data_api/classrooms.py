@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import pandas as pd
 from itertools import product, starmap
 from collections import defaultdict
 from data_api.utilities.my_types import Classroom, Slot
@@ -13,6 +14,7 @@ def get_rooms():
         room["capacity"] = int(room["capacity"])
         room["has_computers"] = True if room["has_computers"]=="1" else False
         room["user_id"] = None
+        room["used_in_faculty_ids"] = None
         room = Classroom(**{field: room[field] for field in Classroom._fields})
         typed_rooms.append(room)
 
@@ -38,7 +40,7 @@ def get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, room_available, rooms):
     done_rooms = {}
 
     for avail in room_available:
-        room_id = avail["classroom_id"]
+        room_id = avail["room_id"]
         done_rooms[room_id] = True
 
         monday_terms    = transform_room_time(avail["monday"])
@@ -143,3 +145,15 @@ def transform_room_time(ugly_time):
             start, finish = int(ugly_time[i]), int(ugly_time[i+1])
             ranges.append(range(start-1, finish))
         return ranges
+
+
+def get_classroom_ids_csv():
+    path = "database/input/csvs/classrooms.csv"
+    with open(path) as csv_file:
+        classrooms = pd.read_csv(csv_file,
+                                 delimiter=",",
+                                 usecols=[0,1,2,3,4])
+
+        classrooms = pd.DataFrame(classrooms).astype("str")
+
+    return set(classrooms.id)

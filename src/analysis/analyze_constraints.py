@@ -1,102 +1,37 @@
 import os
 import pandas as pd
-from collections import defaultdict
-
-#TODO: Check if there is enough time allowed -> Prof for all their rasps and rooms for all rasps (take computer into account)
-
-def get_professor_ids():
-    path = "database/input/csvs/professors.csv"
-    with open(path) as csv_file:
-        professors = pd.read_csv(csv_file,
-                                 delimiter=",",
-                                 usecols=[0,1,2,3])
-
-        professors = pd.DataFrame(professors).astype("str")
-
-    return set(professors.id)
+import data_api.professors as prof_api
+import data_api.time_structure as time_api
+import data_api.rasps as rasp_api
+import data_api.semesters as seme_api
+import data_api.classrooms as room_api
 
 
-def get_classrooms():
-    path = "database/input/csvs/classrooms.csv"
-    with open(path) as csv_file:
-        classrooms = pd.read_csv(csv_file,
-                                 delimiter=",",
-                                 usecols=[0,1,2,3,4])
+def get_rasps_by_season():
+    rasps = rasp_api.get_rasps()
+    winter_semesters = seme_api.get_winter_semesters_dict()
+    students_estimate = seme_api.get_students_per_rasp_estimate(rasps)
 
-        classrooms = pd.DataFrame(classrooms).astype("str")
+    winter_rasps, summer_rasps = [], []
+    for rasp in rasps:
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        if sem_ids[0] in winter_semesters:
+            winter_rasps.append(rasp)
+        else:
+            summer_rasps.append(rasp)
 
-    return classrooms
-
-
-def get_rasps():
-    path_sem = "database/input/csvs/semesters.csv"
-    with open(path_sem) as csv_file:
-        semesters = pd.read_csv(csv_file,
-                                delimiter=",",
-                                usecols=[0,1,2,3,4,5,6,7],
-                                on_bad_lines='error')
-        semesters = pd.DataFrame(semesters).fillna("").astype("str")
-
-    path_sub = "database/input/csvs/subjects.csv"
-    with open(path_sub) as csv_file:
-        subjects = pd.read_csv(csv_file,
-                               delimiter=",",
-                               usecols=[0,1,2,3,4],
-                               on_bad_lines='error')
-        subjects = pd.DataFrame(subjects).fillna("").astype("str")
-
-    path_rasps = "database/input/csvs/rasps.csv"
-    with open(path_rasps) as csv_file:
-        rasps = pd.read_csv(csv_file,
-                            delimiter=",",
-                            usecols=[0,1,2,3,4,5,6,7,8,9,10,11],
-                            on_bad_lines='error')
-        rasps = pd.DataFrame(rasps).fillna("").astype("str")
-        rasps.index += 1
-
-    sem_students = defaultdict(lambda: 0.0)
-    sem_season = defaultdict(lambda: "W")
-    for _, sem in semesters.iterrows():
-        sem_students[sem.id] = int(sem.numStudents)
-        sem_season[sem.id] = sem.season
-
-    sem_num_optionals = defaultdict(lambda: 0.0)
-    sub_season = defaultdict(lambda: "W")
-    for _, subject in subjects.iterrows():
-        if subject.mandatory == "0":
-            for sem_id in subject.semesterIds.split(","):
-                sem_num_optionals[sem_id] += 1
-
-        for sem_id in subject.semesterIds.split(","):
-            sub_season[subject.id] = sem_season[sem_id]
-
-    sub_students = defaultdict(lambda: 0.0)
-    for _, subject in subjects.iterrows():
-        for sem_id in subject.semesterIds.split(","):
-            if subject.mandatory == "1":
-                sub_students[subject.id] += sem_students[sem_id]
-            elif subject.mandatory == "0":
-                sub_students[subject.id] += (sem_students[sem_id] / sem_num_optionals[sem_id])
-
-    for index, rasp in rasps.iterrows():
-        rasps.at[index, "numStudents"] = sub_students[rasp.subjectId] // int(rasp.totalGroups)
-        rasps.at[index, "season"] = sub_season[rasp.subjectId]
-
-    winter_rasps = rasps[rasps['season'] == 'W']
-    summer_rasps = rasps[rasps['season'] == 'S']
-
-    return winter_rasps, summer_rasps
+    return winter_rasps, summer_rasps, students_estimate
 
 
 def get_professor_rasps_duration(rasps, professor_id):
     duration = 0
-    for _, row in rasps.iterrows():
-        if row.professorId == professor_id:
-            duration += int(row.duration)
+    for rasp in rasps:
+        if rasp.professor_id == professor_id:
+            duration += int(rasp.duration)
     return duration
 
 
-def get_free_time(row):
+def get_free_time(row, NUM_HOURS):
     keys = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 
     free_time = 0
@@ -104,7 +39,7 @@ def get_free_time(row):
         if row[key] == "F":
             continue
         elif row[key] == "T":
-            free_time += 16
+            free_time += NUM_HOURS
         else:
             times = row[key].split(",")
             for i in range(0, len(times), 2):
@@ -113,80 +48,37 @@ def get_free_time(row):
     return free_time
 
 
-def check_capacity_free_time(rasps, classrooms, room_available):
-    pc_rasps =   [rasp for _, rasp in rasps.iterrows() if rasp.needsComputers == "1"]
-    nopc_rasps = [rasp for _, rasp in rasps.iterrows() if rasp.needsComputers == "0"]
+def check_capacity_free_time(rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_estimate):
+    constrained_rooms = {room.room_id : room for _, room in room_available.iterrows()}
+    rooms_free_time = []
+    for room in classrooms.values():
+        free_time = NUM_DAYS * NUM_HOURS
+        if room.id in constrained_rooms:
+            free_time = get_free_time(constrained_rooms[room.id], NUM_HOURS)
 
-    pc_rooms =   [room for _, room in classrooms.iterrows() if room.hasComputers == "1"]
-    nopc_rooms = [room for _, room in classrooms.iterrows() if room.hasComputers == "0"]
+        room_obj = {"id": room.id, "capacity": room.capacity,
+                    "has_computers":room.has_computers, "free_time":free_time}
+        rooms_free_time.append(room_obj)
 
-    constrained_room_ids = {room.classroomId for _, room in room_available.iterrows()}
-    constrained_rooms = {room.classroomId : room for _, room in room_available.iterrows()}
 
-    pc_rooms_formatted = []
-    for room in pc_rooms:
-        free_time = 5 * 16
-        if room.id in constrained_room_ids:
-            free_time = get_free_time(constrained_rooms[room.id])
+    # sort by has_computers=False first, by smallest capacity second
+    rooms_free_time.sort(key=lambda room: (room["has_computers"], room["capacity"]))
 
-        form_room = {"capacity": int(room.capacity), "free_time": free_time, "room_id": room.id}
-        pc_rooms_formatted.append(form_room)
+    fit_rasps_count = 0
+    for rasp in rasps:
+        for room_obj in rooms_free_time:
+            if room_obj["has_computers"] == rasp.needs_computers and \
+               room_obj["capacity"] >= students_estimate[rasp.id] and \
+               room_obj["free_time"] - rasp.duration >= 0:
+                   room_obj["free_time"] -= rasp.duration
+                   fit_rasps_count += 1
+                   break
 
-    nopc_rooms_formatted = []
-    for room in nopc_rooms:
-        free_time = 5 * 16
-        if room.id in constrained_room_ids:
-            free_time = get_free_time(constrained_rooms[room.id])
-
-        form_room = {"capacity": int(room.capacity), "free_time": free_time, "room_id": room.id}
-        nopc_rooms_formatted.append(form_room)
-
-    pc_rooms_formatted.sort(key=lambda x: x["capacity"])
-    nopc_rooms_formatted.sort(key=lambda x: x["capacity"])
-
-    problems = False
-    for rasp in pc_rasps:
-        can_fit_rasp = False
-        for room in pc_rooms_formatted:
-            if rasp.numStudents <= room["capacity"] and room["free_time"] >= int(rasp.duration):
-                room["free_time"] -= int(rasp.duration)
-                can_fit_rasp = True
-                break
-        if not can_fit_rasp:
-            problems = True
-            print(f"Cannot fit computer rasp {rasp.subjectId} {rasp.type} {rasp.group}")
-
-    for rasp in nopc_rasps:
-        can_fit_rasp = False
-        for room in nopc_rooms_formatted:
-            if rasp.numStudents <= room["capacity"] and room["free_time"] >= int(rasp.duration):
-                room["free_time"] -= int(rasp.duration)
-                can_fit_rasp = True
-                break
-
-        if not can_fit_rasp:
-            for room in pc_rooms_formatted:
-                if rasp.numStudents <= room["capacity"] and room["free_time"] >= int(rasp.duration):
-                    room["free_time"] -= int(rasp.duration)
-                    can_fit_rasp = True
-                    break
-
-        if not can_fit_rasp:
-            problems = True
-            print(f"Cannot fit non-computer rasp {rasp.subjectId} {rasp.type} {rasp.group}")
-
-    if problems:
-        return False
-
-    return True
+    return fit_rasps_count == len(rasps)
 
 
 def is_positive_integer(value: str, include_zero = False):
     try:
-        #float_num = float(value)
-        #if not float_num.is_integer():
-        #    return False
-
         num = int(value)
 
         if not include_zero:
@@ -197,7 +89,7 @@ def is_positive_integer(value: str, include_zero = False):
         return False
 
 
-def is_valid_time(time: str, file_name, index, column):
+def is_valid_time(time: str, file_name, index, column, NUM_HOURS):
     if time == "T" or time == "F":
         return []
 
@@ -207,8 +99,8 @@ def is_valid_time(time: str, file_name, index, column):
         if not is_positive_integer(number):
             errors.append(f"ERROR: In {file_name} -> In Row {index} In column \"{column}\" value '{number}' is not a positive integer (or 'T' or 'F').")
 
-        if is_positive_integer(number) and (int(number)<1 or int(number)>16):
-            errors.append(f"ERROR: In {file_name} -> In Row {index} In column \"{column}\" value '{number}' is not in range [1,16].")
+        if is_positive_integer(number) and (int(number)<1 or int(number)>NUM_HOURS):
+            errors.append(f"ERROR: In {file_name} -> In Row {index} In column \"{column}\" value '{number}' is not in range [1,{NUM_HOURS}].")
 
     if errors:
         return errors
@@ -226,7 +118,7 @@ def is_valid_time(time: str, file_name, index, column):
 
 
 def analyze_classroom_available():
-    path = "database/constraints/csvs/editclassroom_available.csv"
+    path = "database/constraints/csvs/classroom_available.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -256,7 +148,7 @@ def analyze_classroom_available():
 
     # Has properties?
     given_properties = room_available.columns.tolist()
-    required_properties = ["classroomId", "monday", "tuesday",
+    required_properties = ["room_id", "monday", "tuesday",
                            "wednesday", "thursday", "friday"]
 
     missing = False
@@ -272,18 +164,19 @@ def analyze_classroom_available():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
-    classrooms = get_classrooms()
-    classroom_ids = {room.id for _, room in classrooms.iterrows()}
+    classrooms = room_api.get_rooms_dict()
+    timeblocks = time_api.get_timeblocks()
+    NUM_DAYS, NUM_HOURS = 5,len(timeblocks)
     improper_format = False
 
     for index, row in room_available.iterrows():
-        monday_errors = is_valid_time(row.monday, "classroom_available.csv", index, "monday")
-        tuesday_errors = is_valid_time(row.tuesday, "classroom_available.csv", index, "tuesday")
-        wednesday_errors = is_valid_time(row.wednesday, "classroom_available.csv", index, "wednesday")
-        thursday_errors = is_valid_time(row.thursday, "classroom_available.csv", index, "thursday")
-        friday_errors = is_valid_time(row.friday, "classroom_available.csv", index, "friday")
+        monday_errors = is_valid_time(row.monday, "classroom_available.csv", index, "monday", NUM_HOURS)
+        tuesday_errors = is_valid_time(row.tuesday, "classroom_available.csv", index, "tuesday", NUM_HOURS)
+        wednesday_errors = is_valid_time(row.wednesday, "classroom_available.csv", index, "wednesday", NUM_HOURS)
+        thursday_errors = is_valid_time(row.thursday, "classroom_available.csv", index, "thursday", NUM_HOURS)
+        friday_errors = is_valid_time(row.friday, "classroom_available.csv", index, "friday", NUM_HOURS)
 
-        if row.classroomId not in classroom_ids or \
+        if row.room_id not in classrooms or \
            monday_errors or \
            tuesday_errors or \
            wednesday_errors or \
@@ -291,8 +184,8 @@ def analyze_classroom_available():
            friday_errors:
                improper_format = True
 
-        if row.classroomId not in classroom_ids:
-            print(f"ERROR: In classroom_available.csv -> In Row {index} In column \"classroomId\" value '{row.classroomId}' doesn't exist as \"id\" in classrooms.")
+        if row.room_id not in classrooms:
+            print(f"ERROR: In classroom_available.csv -> In Row {index} In column \"room_id\" value '{row.room_id}' doesn't exist as \"id\" in classrooms.")
         if monday_errors:
             for error in monday_errors:
                 print(error)
@@ -312,22 +205,20 @@ def analyze_classroom_available():
     if improper_format:
         return False
 
-    winter_rasps, summer_rasps = get_rasps()
-    winter_succeeded = check_capacity_free_time(winter_rasps, classrooms, room_available)
-    summer_succeeded = check_capacity_free_time(summer_rasps, classrooms, room_available)
+    winter_rasps, summer_rasps, students_estimate = get_rasps_by_season()
+    winter_succeeded = check_capacity_free_time(winter_rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_estimate)
+    summer_succeeded = check_capacity_free_time(summer_rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_estimate)
 
     if not winter_succeeded:
-        print("Winter rasps couldn't be scheduled with given classroom constraints (capacity, free time).")
-        return False
+        print("Not enough (computer rooms, capacity, free time) given in rooms to schedule WINTER rasps.")
     if not summer_succeeded:
-        print("Summer rasps couldn't be scheduled with given classroom constraints (capacity, free time).")
-        return False
+        print("Not enough (computer rooms, capacity, free time) given in rooms to schedule SUMMER rasps.")
 
-    return True
+    return winter_succeeded and summer_succeeded
 
 
 def analyze_professor_available():
-    path = "database/constraints/csvs/editprofessor_available.csv"
+    path = "database/constraints/csvs/professor_available.csv"
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -357,7 +248,7 @@ def analyze_professor_available():
 
     # Has properties?
     given_properties = prof_available.columns.tolist()
-    required_properties = ["professorId", "monday", "tuesday",
+    required_properties = ["professor_id", "monday", "tuesday",
                            "wednesday", "thursday", "friday"]
 
     missing = False
@@ -373,17 +264,19 @@ def analyze_professor_available():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
-    professor_ids = get_professor_ids()
+    professor_ids = prof_api.get_professor_ids_csv()
+    timeblocks = time_api.get_timeblocks()
+    NUM_DAYS, NUM_HOURS = 5,len(timeblocks)
     improper_format = False
 
     for index, row in prof_available.iterrows():
-        monday_errors = is_valid_time(row.monday, "professor_available.csv", index, "monday")
-        tuesday_errors = is_valid_time(row.tuesday, "professor_available.csv", index, "tuesday")
-        wednesday_errors = is_valid_time(row.wednesday, "professor_available.csv", index, "wednesday")
-        thursday_errors = is_valid_time(row.thursday, "professor_available.csv", index, "thursday")
-        friday_errors = is_valid_time(row.friday, "professor_available.csv", index, "friday")
+        monday_errors    = is_valid_time(row.monday, "professor_available.csv", index, "monday", NUM_HOURS)
+        tuesday_errors   = is_valid_time(row.tuesday, "professor_available.csv", index, "tuesday", NUM_HOURS)
+        wednesday_errors = is_valid_time(row.wednesday, "professor_available.csv", index, "wednesday", NUM_HOURS)
+        thursday_errors  = is_valid_time(row.thursday, "professor_available.csv", index, "thursday", NUM_HOURS)
+        friday_errors    = is_valid_time(row.friday, "professor_available.csv", index, "friday", NUM_HOURS)
 
-        if row.professorId not in professor_ids or \
+        if row.professor_id not in professor_ids or \
            monday_errors or \
            tuesday_errors or \
            wednesday_errors or \
@@ -391,8 +284,8 @@ def analyze_professor_available():
            friday_errors:
                improper_format = True
 
-        if row.professorId not in professor_ids:
-            print(f"ERROR: In professor_available.csv -> In Row {index} In column \"professorId\" value '{row.professorId}' doesn't exist as \"id\" in professors.")
+        if row.professor_id not in professor_ids:
+            print(f"ERROR: In professor_available.csv -> In Row {index} In column \"professor_id\" value '{row.professor_id}' doesn't exist as \"id\" in professors.")
         if monday_errors:
             for error in monday_errors:
                 print(error)
@@ -412,20 +305,20 @@ def analyze_professor_available():
     if improper_format:
         return False
 
-    winter_rasps, summer_rasps = get_rasps()
+    winter_rasps, summer_rasps, _ = get_rasps_by_season()
+
     not_enough_free_time = False
     for index, row in prof_available.iterrows():
-        prof_free_time = get_free_time(row)
-        prof_winter_rasp_duration = get_professor_rasps_duration(winter_rasps, row.professorId)
-        prof_summer_rasp_duration = get_professor_rasps_duration(summer_rasps, row.professorId)
+        prof_free_time = get_free_time(row, NUM_HOURS)
+        prof_winter_rasp_duration = get_professor_rasps_duration(winter_rasps, row.professor_id)
+        prof_summer_rasp_duration = get_professor_rasps_duration(summer_rasps, row.professor_id)
 
         if prof_winter_rasp_duration > prof_free_time:
             not_enough_free_time = True
-            print(f"ERROR: In professor_available.csv -> In Row {index} '{row.professorId}' has total of '{prof_free_time}' units of free time but their total WINTER rasp duration is '{prof_winter_rasp_duration}' units of time.")
-
+            print(f"ERROR: In professor_available.csv -> In Row {index} '{row.professor_id}' has total of '{prof_free_time}' hours of free time but their total WINTER rasp duration is '{prof_winter_rasp_duration}' hours.")
         if prof_summer_rasp_duration > prof_free_time:
             not_enough_free_time = True
-            print(f"ERROR: In professor_available.csv -> In Row {index} '{row.professorId}' has total of '{prof_free_time}' units of free time but their total SUMMER rasp duration is '{prof_summer_rasp_duration}' units of time.")
+            print(f"ERROR: In professor_available.csv -> In Row {index} '{row.professor_id}' has total of '{prof_free_time}' hours of free time but their total SUMMER rasp duration is '{prof_summer_rasp_duration}' hours.")
 
     if not_enough_free_time:
         return False

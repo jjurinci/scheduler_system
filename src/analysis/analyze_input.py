@@ -1,87 +1,47 @@
 import pandas as pd
 import os
-
-def get_faculty_ids():
-    path = "database/input/csvs/faculties.csv"
-    with open(path) as csv_file:
-        faculties = pd.read_csv(csv_file,
-                                delimiter=",",
-                                usecols=[0,1,2])
-
-        faculties = pd.DataFrame(faculties).astype("str")
-
-    return set(faculties.id)
-
-def get_semester_ids():
-    path = "database/input/csvs/semesters.csv"
-    with open(path) as csv_file:
-        semesters = pd.read_csv(csv_file,
-                                delimiter=",",
-                                usecols=[0,1,2,3,4,5,6,7])
-
-        semesters = pd.DataFrame(semesters).astype("str")
-
-    return set(semesters.id)
-
-def get_professor_ids():
-    path = "database/input/csvs/professors.csv"
-    with open(path) as csv_file:
-        professors = pd.read_csv(csv_file,
-                                 delimiter=",",
-                                 usecols=[0,1,2,3])
-
-        professors = pd.DataFrame(professors).astype("str")
-
-    return set(professors.id)
+from dateutil.rrule import rrulestr
+import data_api.time_structure as time_api
+import data_api.faculties as facu_api
+import data_api.study_programmes as stud_api
+import data_api.semesters as seme_api
+import data_api.professors as prof_api
+import data_api.subjects as subj_api
+from datetime import datetime
 
 
-def get_subject_ids():
-    path = "database/input/csvs/subjects.csv"
-    with open(path) as csv_file:
-        subjects = pd.read_csv(csv_file,
-                               delimiter=",",
-                               usecols=[0,1,2,3,4])
+def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_DATE: datetime, hour_to_index: dict, index):
+    rrule_str = rrule_str[1:-1].replace("\\n", "\n")
+    try:
+        rrule_obj = rrulestr(rrule_str)
+    except Exception:
+        print(f"ERROR: In rasps.csv -> In Row {index} cannot parse \"rrule\".")
+        return False
 
-        subjects = pd.DataFrame(subjects).astype("str")
+    start_sem_date_repr = START_SEMESTER_DATE.strftime("%d/%m/%Y,%H:%M")
+    end_sem_date_repr   = END_SEMESTER_DATE.strftime("%d/%m/%Y,%H:%M")
 
-    return set(subjects.id)
+    all_dates = list(rrule_obj)
+    for rrule_date in all_dates:
+        rrule_date_repr = rrule_date.strftime("%d/%m/%Y,%H:%M")
+        hour_min = rrule_date.strftime("%H:%M")
 
-def get_classroom_ids():
-    path = "database/input/csvs/classrooms.csv"
-    with open(path) as csv_file:
-        classrooms = pd.read_csv(csv_file,
-                                 delimiter=",",
-                                 usecols=[0,1,2,3,4])
+        if rrule_date < START_SEMESTER_DATE:
+            print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} is lesser than START_SEMESTER_DATE={start_sem_date_repr}.")
+            return False
+        if rrule_date > END_SEMESTER_DATE:
+            print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} is bigger than END_SEMESTER_DATE={end_sem_date_repr}.")
+            return False
+        if hour_min != "00:00" and hour_min not in hour_to_index:
+            print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min which is not an academic hour:min.")
+            return False
+    return True
 
-        classrooms = pd.DataFrame(classrooms).astype("str")
 
-    return set(classrooms.id)
-
-def invalid_fixedAt(raw_fixedAt, index):
-    if not raw_fixedAt:
-        return []
-
-    classroom_ids = get_classroom_ids()
-    fixedAt = raw_fixedAt.split(",")
-    if len(fixedAt) != 3:
-        return [f"ERROR: In rasps.csv -> In Row {index} In column \"fixedAt\" value '{raw_fixedAt}' has invalid format."]
-
-    errors = []
-    room_id, day, hour = fixedAt
-    if room_id not in classroom_ids:
-        errors.append(f"ERROR: In rasps.csv -> In Row {index} In column \"fixedAt\" room value '{room_id}' doesn't exist as \"id\" in classrooms.")
-    if not is_positive_integer(day) or is_positive_integer(day) and (int(day)<1 or int(day)>5):
-        errors.append(f"ERROR: In rasps.csv -> In Row {index} In column \"fixedAt\" day value '{day}' must be in range [1,5].")
-    if not is_positive_integer(hour) or is_positive_integer(hour) and (int(hour)<1 or int(hour)>16):
-        errors.append(f"ERROR: In rasps.csv -> In Row {index} In column \"fixedAt\" hour value '{hour}' must be in range [1,16].")
-
-    return errors
-
-def invalid_semesterIds(semesterIds: str):
-    real_semester_ids = get_semester_ids()
+def invalid_semesterIds(semesterIds: str, real_semester_ids: set):
     foreign_keys = semesterIds.split(",")
+    return [fk for fk in foreign_keys if fk != "" and fk not in real_semester_ids]
 
-    return [fk for fk in foreign_keys if fk not in real_semester_ids]
 
 def is_float(number: str):
     try:
@@ -89,6 +49,7 @@ def is_float(number: str):
         return True
     except ValueError:
         return False
+
 
 # Problem if "1.0" is passed as value
 def is_positive_integer(value: str, include_zero = False):
@@ -128,9 +89,9 @@ def is_valid_season(value: str):
 
 
 def analyze_faculties():
-    path = "database/input/csvs/editfaculties.csv"
+    path = "database/input/csvs/faculties.csv"
 
-    # File size below 50 MB?
+    # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
     if file_size > 50:
         print(f"ERROR: Maximum file size is 50 MB.")
@@ -141,7 +102,7 @@ def analyze_faculties():
         try:
             faculties = pd.read_csv(csv_file,
                                     delimiter=",",
-                                    usecols=[0,1,2],
+                                    usecols=[0,1],
                                     on_bad_lines='error')
             faculties = pd.DataFrame(faculties).fillna("").astype("str")
             faculties.index += 1
@@ -158,7 +119,7 @@ def analyze_faculties():
 
     # Has properties?
     given_properties = faculties.columns.tolist()
-    required_properties = ["id", "name", "userId"]
+    required_properties = ["id", "name"]
 
     missing = False
     for required_property in required_properties:
@@ -202,9 +163,9 @@ def analyze_faculties():
 
 
 def analyze_classrooms():
-    path = "database/input/csvs/editclassrooms.csv"
+    path = "database/input/csvs/classrooms.csv"
 
-    # File size below 50 MB?
+    # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
     if file_size > 50:
         print(f"ERROR: Maximum file size is 50 MB.")
@@ -215,7 +176,7 @@ def analyze_classrooms():
         try:
             classrooms = pd.read_csv(csv_file,
                                     delimiter=",",
-                                    usecols=[0,1,2,3,4],
+                                    usecols=[0,1,2,3],
                                     on_bad_lines='error')
             classrooms = pd.DataFrame(classrooms).fillna("").astype("str")
             classrooms.index += 1
@@ -232,7 +193,7 @@ def analyze_classrooms():
 
     # Has properties?
     given_properties = classrooms.columns.tolist()
-    required_properties = ["id", "name", "capacity", "hasComputers" ,"userId"]
+    required_properties = ["id", "name", "capacity", "has_computers"]
 
     missing = False
     for required_property in required_properties:
@@ -252,17 +213,17 @@ def analyze_classrooms():
         if not row.id or \
            not row["name"] or \
            not is_positive_integer(row.capacity) or \
-           not is_zero_or_one(row.hasComputers):
+           not is_zero_or_one(row.has_computers):
                improper_format = True
 
         if not row.id:
             print(f"ERROR: In classrooms.csv -> Row {index} has \"id\" of NULL.")
         if not row["name"]:
-            print(f"ERROR: In classrooms.csv -> Row {index} has \"hasComputers\" of NULL.")
+            print(f"ERROR: In classrooms.csv -> Row {index} has \"has_computers\" of NULL.")
         if not is_positive_integer(row.capacity):
             print(f"ERROR: In classrooms.csv -> In Row {index} \"capacity\" is not a positive integer.")
-        if not is_zero_or_one(row.hasComputers):
-            print(f"ERROR: In classrooms.csv -> In Row {index} \"hasComputers\" is not \"0\" or \"1\".")
+        if not is_zero_or_one(row.has_computers):
+            print(f"ERROR: In classrooms.csv -> In Row {index} \"has_computers\" is not \"0\" or \"1\".")
 
     if improper_format:
         return False
@@ -283,9 +244,9 @@ def analyze_classrooms():
 
 
 def analyze_professors():
-    path = "database/input/csvs/editprofessors.csv"
+    path = "database/input/csvs/professors.csv"
 
-    # File size below 50 MB?
+    # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
     if file_size > 50:
         print(f"ERROR: Maximum file size is 50 MB.")
@@ -296,7 +257,7 @@ def analyze_professors():
         try:
             professors = pd.read_csv(csv_file,
                                      delimiter=",",
-                                     usecols=[0,1,2,3],
+                                     usecols=[0,1,2],
                                      on_bad_lines='error')
             professors = pd.DataFrame(professors).fillna("").astype("str")
             professors.index += 1
@@ -313,7 +274,7 @@ def analyze_professors():
 
     # Has properties?
     given_properties = professors.columns.tolist()
-    required_properties = ["id", "firstName", "lastName","userId"]
+    required_properties = ["id", "first_name", "last_name"]
 
     missing = False
     for required_property in required_properties:
@@ -331,16 +292,16 @@ def analyze_professors():
     improper_format = False
     for index, row in professors.iterrows():
         if not row.id or \
-           not row.firstName or \
-           not row.lastName:
+           not row.first_name or \
+           not row.last_name:
                improper_format = True
 
         if not row.id:
             print(f"ERROR: In professors.csv -> Row {index} has \"id\" of NULL.")
-        if not row.firstName:
-            print(f"ERROR: In professors.csv -> Row {index} has \"firstName\" of NULL.")
-        if not row.lastName:
-            print(f"ERROR: In professors.csv -> Row {index} has \"lastName\" of NULL.")
+        if not row.first_name:
+            print(f"ERROR: In professors.csv -> Row {index} has \"first_name\" of NULL.")
+        if not row.last_name:
+            print(f"ERROR: In professors.csv -> Row {index} has \"last_name\" of NULL.")
 
     if improper_format:
         return False
@@ -360,10 +321,90 @@ def analyze_professors():
     return True
 
 
-def analyze_semesters():
-    path = "database/input/csvs/editsemesters.csv"
+def analyze_study_programmes():
+    path = "database/input/csvs/study_programmes.csv"
 
-    # File size below 50 MB?
+    # File size above 50 MB?
+    file_size = os.path.getsize(path) / (10**6) #MB
+    if file_size > 50:
+        print(f"ERROR: Maximum file size is 50 MB.")
+        return False
+
+    with open(path) as csv_file:
+        # Is it a properly formatted csv?
+        try:
+            study_programmes = pd.read_csv(csv_file,
+                                           delimiter=",",
+                                           usecols=[0,1,2],
+                                           on_bad_lines='error')
+            study_programmes = pd.DataFrame(study_programmes).fillna("").astype("str")
+            study_programmes.index += 1
+        except ValueError:
+            print(f"ERROR: Bad CSV format. Expected header length to be exactly 3.")
+            return False
+        except Exception as e:
+            print(f"ERROR: Bad CSV format. {e}")
+            return False
+
+    # CSV has header and 0 rows.
+    if study_programmes.empty:
+        print("WARNING: study_programmes.csv has no rows (except header).")
+
+    # Has properties?
+    given_properties = study_programmes.columns.tolist()
+    required_properties = ["id", "name", "faculty_id"]
+
+    missing = False
+    for required_property in required_properties:
+        if required_property not in given_properties:
+            print(f"ERROR: In study_programmes.csv -> Property \"{required_property}\" is missing.")
+            missing = True
+
+    if missing:
+        print(f"study_programmes.csv only has these properties: {given_properties}")
+        return False
+
+    # Has properly formated properties?
+
+    #  None in required fields? Proper numbers given?
+
+    faculty_ids = facu_api.get_faculty_ids_csv()
+    improper_format = False
+    for index, row in study_programmes.iterrows():
+        if not row.id or \
+           not row["name"] or \
+           not row.faculty_id in faculty_ids:
+               improper_format = True
+
+        if not row.id:
+            print(f"ERROR: In study_programmes.csv -> Row {index} has \"id\" of NULL.")
+        if not row["name"]:
+            print(f"ERROR: In study_programmes.csv -> Row {index} has \"name\" of NULL.")
+        if not row.faculty_id in faculty_ids:
+            print(f"ERROR: In study_programmes.csv -> In Row {index} foreign key \"faculty_id\" with value '{row.faculty_id}' doesn't exist as \"id\" in faculties.")
+
+    if improper_format:
+        return False
+
+    #  Duplicates?
+    seen = set()
+    duplicates = False
+    for study_id in study_programmes.id:
+        if study_id in seen:
+            print(f"ERROR: In study_programmes.csv -> \"{study_id}\" is a duplicate id.")
+            duplicates = True
+        seen.add(study_id)
+
+    if duplicates:
+        return False
+
+    return True
+
+
+def analyze_semesters():
+    path = "database/input/csvs/semesters.csv"
+
+    # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
     if file_size > 50:
         print(f"ERROR: Maximum file size is 50 MB.")
@@ -374,7 +415,7 @@ def analyze_semesters():
         try:
             semesters = pd.read_csv(csv_file,
                                     delimiter=",",
-                                    usecols=[0,1,2,3,4,5,6,7],
+                                    usecols=[0,1,2,3,4,5],
                                     on_bad_lines='error')
             semesters = pd.DataFrame(semesters).fillna("").astype("str")
             semesters.index += 1
@@ -391,9 +432,9 @@ def analyze_semesters():
 
     # Has properties?
     given_properties = semesters.columns.tolist()
-    required_properties = ["id", "name", "season","numSemester", \
-                           "hasOptionalSubjects", "numStudents", "facultyId", \
-                           "userId"]
+    required_properties = ["id", "num_semester","season", \
+                           "has_optional_subjects", "num_students", \
+                           "study_programme_id"]
 
     missing = False
     for required_property in required_properties:
@@ -409,32 +450,29 @@ def analyze_semesters():
 
     #  None in required fields? Proper numbers given?
 
-    faculty_ids = get_faculty_ids()
+    study_programme_ids = stud_api.get_study_programme_ids_csv()
     improper_format = False
     for index, row in semesters.iterrows():
         if not row.id or \
-           not row["name"] or \
+           not is_positive_integer(row.num_semester) or \
            not is_valid_season(row.season) or \
-           not is_positive_integer(row.numSemester) or \
-           not is_positive_integer(row.hasOptionalSubjects, include_zero=True) or \
-           not is_positive_integer(row.numStudents) or \
-           not row.facultyId in faculty_ids:
+           not is_positive_integer(row.has_optional_subjects, include_zero=True) or \
+           not is_positive_integer(row.num_students) or \
+           not row.study_programme_id in study_programme_ids:
                improper_format = True
 
         if not row.id:
             print(f"ERROR: In semesters.csv -> Row {index} has \"id\" of NULL.")
-        if not row["name"]:
-            print(f"ERROR: In semesters.csv -> Row {index} has \"name\" of NULL.")
         if not is_valid_season(row.season):
             print(f"ERROR: In semesters.csv -> In Row {index} \"season\" is not \"W\" or \"S\".")
-        if not is_positive_integer(row.numSemester):
-            print(f"ERROR: In semesters.csv -> In Row {index} \"numSemester\" is not a positive integer.")
-        if not is_positive_integer(row.hasOptionalSubjects, include_zero=True):
-            print(f"ERROR: In semesters.csv -> In Row {index} \"hasOptionalSubjects\" is not a positive integer.")
-        if not is_positive_integer(row.numStudents):
-            print(f"ERROR: In semesters.csv -> In Row {index} \"numStudents\" is not a positive integer.")
-        if not row.facultyId in faculty_ids:
-            print(f"ERROR: In semesters.csv -> In Row {index} foreign key \"facultyId\" with value '{row.facultyId}' doesn't exist as \"id\" in faculties.")
+        if not is_positive_integer(row.num_semester):
+            print(f"ERROR: In semesters.csv -> In Row {index} \"num_semester\" is not a positive integer.")
+        if not is_positive_integer(row.has_optional_subjects, include_zero=True):
+            print(f"ERROR: In semesters.csv -> In Row {index} \"has_optional_subjects\" is not a positive integer.")
+        if not is_positive_integer(row.num_students):
+            print(f"ERROR: In semesters.csv -> In Row {index} \"num_students\" is not a positive integer.")
+        if not row.study_programme_id in study_programme_ids:
+            print(f"ERROR: In semesters.csv -> In Row {index} foreign key \"study_programme_id\" with value '{row.study_programme_id}' doesn't exist as \"id\" in study programmes.")
 
     if improper_format:
         return False
@@ -455,9 +493,9 @@ def analyze_semesters():
 
 
 def analyze_subjects():
-    path = "database/input/csvs/editsubjects.csv"
+    path = "database/input/csvs/subjects.csv"
 
-    # File size below 50 MB?
+    # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
     if file_size > 50:
         print(f"ERROR: Maximum file size is 50 MB.")
@@ -468,7 +506,7 @@ def analyze_subjects():
         try:
             subjects = pd.read_csv(csv_file,
                                    delimiter=",",
-                                   usecols=[0,1,2,3,4],
+                                   usecols=[0,1,2,3],
                                    on_bad_lines='error')
             subjects = pd.DataFrame(subjects).fillna("").astype("str")
             subjects.index += 1
@@ -485,7 +523,7 @@ def analyze_subjects():
 
     # Has properties?
     given_properties = subjects.columns.tolist()
-    required_properties = ["id", "name", "mandatory", "semesterIds", "userId"]
+    required_properties = ["id", "name", "mandatory_in_semester_ids", "optional_in_semester_ids"]
 
     missing = False
     for required_property in required_properties:
@@ -500,25 +538,28 @@ def analyze_subjects():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
+    real_semester_ids = seme_api.get_semester_ids_csv()
     improper_format = False
     for index, row in subjects.iterrows():
-        invalid_sem_fks = invalid_semesterIds(row.semesterIds)
+        invalid_mandatory_sem_fks = invalid_semesterIds(row.mandatory_in_semester_ids, real_semester_ids)
+        invalid_optional_sem_fks  = invalid_semesterIds(row.optional_in_semester_ids, real_semester_ids)
 
         if not row.id or \
            not row["name"] or \
-           not is_zero_or_one(row.mandatory) or \
-           invalid_sem_fks:
+           invalid_mandatory_sem_fks or \
+           invalid_optional_sem_fks:
                improper_format = True
 
         if not row.id:
             print(f"ERROR: In subjects.csv -> Row {index} has \"id\" of NULL.")
         if not row["name"]:
             print(f"ERROR: In subjects.csv -> Row {index} has \"name\" of NULL.")
-        if not is_zero_or_one(row.mandatory):
-            print(f"ERROR: In subjects.csv -> In Row {index} \"mandatory\" is not \"0\" or \"1\".")
-        if invalid_sem_fks:
-            for invalid_fk in invalid_sem_fks:
-                print(f"ERROR: In subjects.csv -> In Row {index} In column \"semesterIds\" value '{invalid_fk}' doesn't exist as \"id\" in semesters.")
+        if invalid_mandatory_sem_fks:
+            for invalid_fk in invalid_mandatory_sem_fks:
+                print(f"ERROR: In subjects.csv -> In Row {index} In column \"mandatory_in_semester_ids\" value '{invalid_fk}' doesn't exist as \"id\" in semesters.")
+        if invalid_optional_sem_fks:
+            for invalid_fk in invalid_optional_sem_fks:
+                print(f"ERROR: In subjects.csv -> In Row {index} In column \"optional_in_semester_ids\" value '{invalid_fk}' doesn't exist as \"id\" in semesters.")
 
     if improper_format:
         return False
@@ -539,13 +580,14 @@ def analyze_subjects():
     duplicate_fks = False
 
     for index, row in subjects.iterrows():
-        semester_fks = row.semesterIds
-        sem_fks = semester_fks.split(",")
+        mandatory_in_semester_ids = row.mandatory_in_semester_ids.split(",")
+        optional_in_semester_ids  = row.optional_in_semester_ids.split(",")
+        sem_fks = mandatory_in_semester_ids + optional_in_semester_ids
         seen = set()
         for fk in sem_fks:
             if fk in seen:
                 duplicates = True
-                print(f"ERROR: In subjects.csv -> In Row {index} In column \"semesterIds\" value '{fk}' is a duplicate.")
+                print(f"ERROR: In subjects.csv -> In Row {index} In column \"mandatory_in_semester_ids\" or in column \"optional_in_semester_ids\" value '{fk}' is a duplicate.")
             seen.add(fk)
 
     if duplicate_fks:
@@ -555,9 +597,9 @@ def analyze_subjects():
 
 
 def analyze_rasps():
-    path = "database/input/csvs/editrasps.csv"
+    path = "database/input/csvs/rasps.csv"
 
-    # File size below 50 MB?
+    # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
     if file_size > 50:
         print(f"ERROR: Maximum file size is 50 MB.")
@@ -568,7 +610,7 @@ def analyze_rasps():
         try:
             rasps = pd.read_csv(csv_file,
                                 delimiter=",",
-                                usecols=[0,1,2,3,4,5,6,7,8,9,10,11],
+                                usecols=[0,1,2,3,4,5,6,7,8,9],
                                 on_bad_lines='error')
             rasps = pd.DataFrame(rasps).fillna("").astype("str")
             rasps.index += 1
@@ -585,9 +627,10 @@ def analyze_rasps():
 
     # Has properties?
     given_properties = rasps.columns.tolist()
-    required_properties = ["id", "professorId", "subjectId", "type", "group", \
-                           "duration", "mandatory", "needsComputers", "totalGroups",
-                           "color", "fixedAt", "userId"]
+    required_properties = ["id", "professor_id", "subject_id", "type", "group", \
+                           "duration","needs_computers", "fix_at_room_id",
+                           "random_dtstart_weekday", "rrule"]
+
 
     missing = False
     for required_property in required_properties:
@@ -602,45 +645,46 @@ def analyze_rasps():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
-    professor_ids = get_professor_ids()
-    subject_ids = get_subject_ids()
+
+    START_SEMESTER_DATE, END_SEMESTER_DATE = time_api.get_start_end_semester()
+    START_SEMESTER_DATE = datetime(START_SEMESTER_DATE.year, START_SEMESTER_DATE.month, START_SEMESTER_DATE.day, 0, 0, 0)
+    END_SEMESTER_DATE   = datetime(END_SEMESTER_DATE.year, END_SEMESTER_DATE.month, END_SEMESTER_DATE.day, 23, 59, 59)
+    timeblocks          = time_api.get_timeblocks()
+    hour_to_index, _    = time_api.get_hour_index_structure(timeblocks)
+    professor_ids = prof_api.get_professor_ids_csv()
+    subject_ids = subj_api.get_subject_ids_csv()
     improper_format = False
 
     for index, row in rasps.iterrows():
-        fixedAt_errors = invalid_fixedAt(row.fixedAt, index)
         if not row.id or \
-           row.professorId not in professor_ids or \
-           row.subjectId not in subject_ids or \
+           row.professor_id not in professor_ids or \
+           row.subject_id not in subject_ids or \
            not row.type or \
            not row.group or \
            not is_positive_integer(row.duration) or \
-           not is_zero_or_one(row.mandatory) or \
-           not is_zero_or_one(row.needsComputers) or \
-           not row.totalGroups or \
-           fixedAt_errors:
+           not is_zero_or_one(row.needs_computers) or \
+           not is_zero_or_one(row.random_dtstart_weekday) or \
+           not is_valid_rrule(row.rrule, START_SEMESTER_DATE, END_SEMESTER_DATE, hour_to_index, index):
                improper_format = True
 
         if not row.id:
             print(f"ERROR: In rasps.csv -> Row {index} has \"id\" of NULL.")
-        if row.professorId not in professor_ids:
-            print(f"ERROR: In rasps.csv -> In Row {index} In column \"professorId\" value '{row.professorId}' doesn't exist as \"id\" in professors.")
-        if row.subjectId not in subject_ids:
-            print(f"ERROR: In rasps.csv -> In Row {index} In column \"subjectId\" value '{row.subjectId}' doesn't exist as \"id\" in subjects.")
+        if row.professor_id not in professor_ids:
+            print(f"ERROR: In rasps.csv -> In Row {index} In column \"professor_id\" value '{row.professor_id}' doesn't exist as \"id\" in professors.")
+        if row.subject_id not in subject_ids:
+            print(f"ERROR: In rasps.csv -> In Row {index} In column \"subject_id\" value '{row.subject_id}' doesn't exist as \"id\" in subjects.")
         if not row.type:
             print(f"ERROR: In rasps.csv -> Row {index} has \"type\" of NULL.")
         if not row.group:
             print(f"ERROR: In rasps.csv -> Row {index} has \"group\" of NULL.")
         if not is_positive_integer(row.duration):
             print(f"ERROR: In rasps.csv -> In Row {index} \"duration\" is not a positive integer.")
-        if not is_zero_or_one(row.mandatory):
-            print(f"ERROR: In rasps.csv -> In Row {index} \"mandatory\" is not \"0\" or \"1\".")
-        if not is_zero_or_one(row.needsComputers):
-            print(f"ERROR: In rasps.csv -> In Row {index} \"needsComputer\" is not \"0\" or \"1\".")
-        if not row.totalGroups:
-            print(f"ERROR: In rasps.csv -> Row {index} has \"totalGroups\" of NULL.")
-        if fixedAt_errors:
-            for error in fixedAt_errors:
-                print(error)
+        if not is_zero_or_one(row.needs_computers):
+            print(f"ERROR: In rasps.csv -> In Row {index} \"needs_computers\" is not \"0\" or \"1\".")
+        if not is_zero_or_one(row.random_dtstart_weekday):
+            print(f"ERROR: In rasps.csv -> In Row {index} \"random_dtstart_weekday\" is not \"0\" or \"1\".")
+        if not row.rrule:
+            print(f"ERROR: In rasps.csv -> Row {index} has \"rrule\" of NULL.")
 
     if improper_format:
         return False
@@ -660,6 +704,7 @@ def analyze_rasps():
     return True
 
 print(analyze_faculties())
+print(analyze_study_programmes())
 print(analyze_classrooms())
 print(analyze_professors())
 print(analyze_semesters())

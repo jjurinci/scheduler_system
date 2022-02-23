@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import pandas as pd
 from collections import defaultdict, Counter
 from itertools import product
 from data_api.utilities.my_types import Semester
@@ -164,3 +165,14 @@ def get_nasts_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rasps):
 
     return nasts_occupied, optionals_occupied
 
+
+def get_semester_ids_csv():
+    path = "database/input/csvs/semesters.csv"
+    with open(path) as csv_file:
+        semesters = pd.read_csv(csv_file,
+                                delimiter=",",
+                                usecols=[0,1,2,3,4,5])
+
+        semesters = pd.DataFrame(semesters).astype("str")
+
+    return set(semesters.id)

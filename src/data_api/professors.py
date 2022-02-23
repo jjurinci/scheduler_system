@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import pandas as pd
 from collections import defaultdict
 from data_api.utilities.my_types import Professor
 
@@ -84,3 +85,16 @@ def transform_prof_time(ugly_time):
             for j in range(start, finish+1):
                 pretty_time[j-1] = 0
         return pretty_time
+
+
+def get_professor_ids_csv():
+    path = "database/input/csvs/professors.csv"
+    with open(path) as csv_file:
+        professors = pd.read_csv(csv_file,
+                                 delimiter=",",
+                                 usecols=[0,1,2])
+
+        professors = pd.DataFrame(professors).astype("str")
+
+    return set(professors.id)
+

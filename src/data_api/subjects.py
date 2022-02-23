@@ -1,5 +1,5 @@
 import json
-import data_api.semesters as seme_api
+import pandas as pd
 from collections import defaultdict
 from data_api.utilities.my_types import Subject
 
@@ -45,3 +45,15 @@ def get_subjects_with_rasps(rasps):
                               sub.optional_in_semester_ids, sub.user_id, subject_rasps[sub.id])
             subjects.append(subject)
     return subjects
+
+
+def get_subject_ids_csv():
+    path = "database/input/csvs/subjects.csv"
+    with open(path) as csv_file:
+        subjects = pd.read_csv(csv_file,
+                               delimiter=",",
+                               usecols=[0,1,2,3])
+
+        subjects = pd.DataFrame(subjects).astype("str")
+
+    return set(subjects.id)

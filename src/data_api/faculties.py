@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from data_api.utilities.my_types import Faculty
 
 def get_faculties():
@@ -12,3 +13,15 @@ def get_faculties():
         typed_faculties.append(faculty)
 
     return typed_faculties
+
+
+def get_faculty_ids_csv():
+    path = "database/input/csvs/faculties.csv"
+    with open(path) as csv_file:
+        faculties = pd.read_csv(csv_file,
+                                delimiter=",",
+                                usecols=[0,1])
+
+        faculties = pd.DataFrame(faculties).astype("str")
+
+    return set(faculties.id)

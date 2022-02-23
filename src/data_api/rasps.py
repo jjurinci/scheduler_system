@@ -37,11 +37,10 @@ def get_rasps():
         rasp["needs_computers"] = True if rasp["needs_computers"] == "1" else False
         rasp["total_groups"] = rasp_groups[total_groups_key]
         rasp["random_dtstart_weekday"] = True if rasp["random_dtstart_weekday"] else False
+        rasp["user_id"] = None
         rrule = rasp["rrule"]
         rrule = rrule[1:-1].replace("\\n", "\n")
-        #test_rrule(rrule)
         rasp["rrule"] = rrule
-
         rrule_obj = rrulestr(rrule)
         rasp["fixed_hour"] = True if rrule_obj._dtstart.hour != 0 else False
         rasp = Rasp(**{field: rasp[field] for field in Rasp._fields})
