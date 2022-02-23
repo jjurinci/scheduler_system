@@ -35,6 +35,10 @@ def get_rooms_dict():
     return rooms_dict
 
 
+def update_rooms(rooms, rooms_occupied):
+    return {room.id:room for room in rooms.values() if room.id in rooms_occupied}
+
+
 def get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, room_available, rooms):
     FREE_TERMS = set()
     done_rooms = {}
@@ -88,10 +92,8 @@ def get_rooms_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rooms):
     free_slots        = get_rooms_free_terms(NUM_WEEKS, NUM_HOURS, rooms_constraints, rooms)
     #1 = [room][week,day,hour] IS OCCUPIED, 0 = [room][week,day,hour] IS FREE
     rooms_occupied = defaultdict(lambda: np.ones(shape=(NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8))
-    for room, week, day, hour in free_slots:
-        rooms_occupied[room][week,day,hour] = 0
-
-    #TODO: Handle fixed rasps
+    for room_id, week, day, hour in free_slots:
+        rooms_occupied[room_id][week,day,hour] = 0
 
     return dict(**rooms_occupied)
 

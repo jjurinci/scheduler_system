@@ -18,10 +18,10 @@ def analyze_movement(verbose = False, move = False):
     timetable = state.timetable
 
     for rasp, slot in timetable.items():
-        intersection = get_intersection(state, rasp, slot)
-        print(rasp.id, rasp.professor_id, intersection, "\n")
+        other_free_slots = get_other_free_slots(state, rasp, slot.room_id)
+        print(rasp.id, rasp.professor_id, other_free_slots, "\n")
         if verbose:
-            print(rasp.id, rasp.professor_id, "fixed_hr:", rasp.fixed_hour, "rnd_day:", rasp.random_dtstart_weekday, intersection, "\n")
+            print(rasp.id, rasp.professor_id, "fixed_hr:", rasp.fixed_hour, "rnd_day:", rasp.random_dtstart_weekday, other_free_slots, "\n")
             print(rasp.professor_id, slot, ":\n", state.mutable_constraints.profs_occupied[rasp.professor_id][slot.week])
             print(slot.room_id, slot.week, ":\n", state.mutable_constraints.rooms_occupied[slot.room_id][slot.week])
             sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
@@ -29,7 +29,7 @@ def analyze_movement(verbose = False, move = False):
                 print(sem_id, slot.week, ":\n", state.mutable_constraints.nasts_occupied[sem_id][slot.week])
 
         if move:
-            dt_week, dt_day, dt_hour = random.choice(intersection)
+            dt_week, dt_day, dt_hour = random.choice(other_free_slots)
             new_slot = Slot(slot.room_id, dt_week, dt_day, dt_hour)
             old_slot = slot
 
@@ -38,7 +38,7 @@ def analyze_movement(verbose = False, move = False):
             tax_tool.tax_all_constraints(state, new_slot, rasp)
 
 
-def get_intersection(state, rasp, slot):
+def get_other_free_slots(state, rasp, room_id):
     rooms_occupied = state.mutable_constraints.rooms_occupied
     profs_occupied = state.mutable_constraints.profs_occupied
     NUM_DAYS = state.time_structure.NUM_DAYS
@@ -61,7 +61,7 @@ def get_intersection(state, rasp, slot):
             NEW_UNTIL   = time_api.index_to_date(un_week, un_day, hour, index_to_hour, NUM_HOURS)
             new_all_dates = time_api.get_rrule_dates(rasp.rrule, NEW_DTSTART, NEW_UNTIL, hour_to_index)
 
-            room_problem = any_cols.any_collisions_in_matrix3D(rasp, new_all_dates, rooms_occupied[slot.room_id])
+            room_problem = any_cols.any_collisions_in_matrix3D(rasp, new_all_dates, rooms_occupied[room_id])
             if room_problem:
                 continue
             prof_problem = any_cols.any_collisions_in_matrix3D(rasp, new_all_dates, profs_occupied[rasp.professor_id])
@@ -76,4 +76,4 @@ def get_intersection(state, rasp, slot):
     return intersection
 
 
-analyze_movement()
+#analyze_movement()

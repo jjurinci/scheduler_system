@@ -19,6 +19,7 @@ def request_solver():
     rooms                    = room_api.get_rooms_dict()
     time_structure           = time_api.get_time_structure()
     initial_constraints      = cons_api.get_initial_constraints(time_structure, rooms, rasps)
+    rooms                    = room_api.update_rooms(rooms, initial_constraints.rooms_occupied)
 
     groups = cons_api.get_type_rasps(rasps)
     subject_types = cons_api.get_subject_types(rasps)
@@ -53,6 +54,11 @@ def request_solver():
                 break
 
         except KeyboardInterrupt:
+            name = "saved_timetables/errors_timetable.pickle"
+            print(f"Saving sample to {name}")
+            with open(name, "wb") as p:
+                print(get_size(state) / 10**6)
+                pickle.dump(state, p)
             break
 
         print(f"{goods=} {bads=}")
