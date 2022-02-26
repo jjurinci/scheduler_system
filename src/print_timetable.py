@@ -1,16 +1,7 @@
-import pickle
 import numpy as np
 from tabulate import tabulate
 import datetime
-
-"""
-Returns complete state from a .pickle file.
-"""
-def load_state():
-    name = "saved_timetables/zero_timetable.pickle"
-    with open(name, "rb") as f:
-        state = pickle.load(f)
-    return state
+from utilities.general_utilities import load_state
 
 
 """

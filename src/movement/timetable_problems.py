@@ -1,14 +1,5 @@
 import optimizer.grade_tool as grade_tool
-import pickle
-
-"""
-Returns complete state from a .pickle file.
-"""
-def load_state():
-    name = "saved_timetables/errors_timetable.pickle"
-    with open(name, "rb") as f:
-        state = pickle.load(f)
-    return state
+from movement.move_utilities import load_state
 
 """
 Given a timetable: the function iterates through all rasps, finds if they

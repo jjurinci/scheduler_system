@@ -1,15 +1,6 @@
-import pickle
 import optimizer.grade_tool as grade_tool
-import analysis.analyze_movement as move_tool
-
-"""
-Returns complete state from a .pickle file.
-"""
-def load_state():
-    name = "saved_timetables/zero_timetable.pickle"
-    with open(name, "rb") as f:
-        state = pickle.load(f)
-    return state
+import movement.movement as move_tool
+from utilities.general_utilities import load_state
 
 
 """

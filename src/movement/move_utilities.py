@@ -1,6 +1,7 @@
 import numpy as np
 import data_api.constraints as cons_api
 
+
 """
 Returns True if entire new_all_dates path has no collisions in given 3D matrix.
 """

@@ -1,20 +1,11 @@
-import pickle
 import random
 import data_api.time_structure as time_api
-import optimizer.any_collisions as any_cols
 import optimizer.tax_tool.tax_tool as tax_tool
 import optimizer.rasp_slots as rasp_slots
 from utilities.my_types import Slot
 from dateutil.rrule import rrulestr
-
-"""
-Returns complete state from a .pickle file.
-"""
-def load_state():
-    name = "saved_timetables/zero_timetable.pickle"
-    with open(name, "rb") as f:
-        state = pickle.load(f)
-    return state
+from movement.move_utilities import any_collisions_in_matrix3D, any_collisions_in_nasts
+from utilities.general_utilities import load_state
 
 
 """
@@ -83,13 +74,13 @@ def get_other_free_slots(state, rasp, room_id):
             NEW_UNTIL   = time_api.index_to_date(un_week, un_day, hour, index_to_hour, NUM_HOURS)
             new_all_dates = time_api.get_rrule_dates(rasp.rrule, NEW_DTSTART, NEW_UNTIL, hour_to_index)
 
-            room_problem = any_cols.any_collisions_in_matrix3D(rasp, new_all_dates, rooms_occupied[room_id])
+            room_problem = any_collisions_in_matrix3D(rasp, new_all_dates, rooms_occupied[room_id])
             if room_problem:
                 continue
-            prof_problem = any_cols.any_collisions_in_matrix3D(rasp, new_all_dates, profs_occupied[rasp.professor_id])
+            prof_problem = any_collisions_in_matrix3D(rasp, new_all_dates, profs_occupied[rasp.professor_id])
             if prof_problem:
                 continue
-            nast_problem = any_cols.any_collisions_in_nasts(state, rasp, new_all_dates)
+            nast_problem = any_collisions_in_nasts(state, rasp, new_all_dates)
             if nast_problem:
                 continue
 
@@ -98,4 +89,4 @@ def get_other_free_slots(state, rasp, room_id):
     return intersection
 
 
-#analyze_movement()
+analyze_movement()

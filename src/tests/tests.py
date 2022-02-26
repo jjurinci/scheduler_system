@@ -1,30 +1,26 @@
-import pickle
 import numpy as np
 import data_api.time_structure as time_api
 from collections import defaultdict
 from dateutil.rrule import rrulestr
-from utilities.get_size import print_size, get_size
+from utilities.general_utilities import load_state, print_size, get_size
 from utilities.my_types import State, MutableConstraints
 from optimizer.tax_tool import tax_tool
 import optimizer.grade_tool as grade_tool
 import data_api.constraints as cons_api
 import optimizer.rasp_slots as rasp_slots
 
-path = "saved_timetables/zero_timetable.pickle"
-
-with open(path, "rb") as p:
-    state = pickle.load(p)
-    print(get_size(state) / 10**6)
-    print_size(state)
+state = load_state()
+print(get_size(state) / 10**6)
+print_size(state)
 
 
 """
-Tests if timetable constraints was properly graded.
+Tests if timetable constraints was properly taxed.
 1) Initial constraints are reconstructed
 2) Each rasp is freshly taxed on initial constraints
 3) New and old constraints are compared to check for differences (no differences are allowed)
 """
-def check_grade_is_0(state):
+def timetable_properly_taxed(state):
     timetable         = state.timetable
     NUM_WEEKS         = state.time_structure.NUM_WEEKS
     NUM_DAYS          = state.time_structure.NUM_DAYS
@@ -274,7 +270,7 @@ def correct_rrules(state):
 
 all_rasps_have_dates(state)
 all_dates_correct_start(state)
-check_grade_is_0(state)
+timetable_properly_taxed(state)
 no_mandatory_optional_collisions(state)
 no_subject_type_collisions(state)
 correct_rrules(state)

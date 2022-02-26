@@ -1,4 +1,15 @@
 import sys
+import pickle
+
+"""
+Returns complete state from a .pickle file.
+"""
+def load_state():
+    name = "saved_timetables/zero_timetable.pickle"
+    with open(name, "rb") as f:
+        state = pickle.load(f)
+    return state
+
 
 """
 Returns the size of an object (recursive) in bytes.
