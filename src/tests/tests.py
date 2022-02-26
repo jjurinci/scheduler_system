@@ -4,7 +4,7 @@ from collections import defaultdict
 from dateutil.rrule import rrulestr
 from utilities.general_utilities import load_state, print_size, get_size
 from utilities.my_types import State, MutableConstraints
-from optimizer.tax_tool import tax_tool
+from optimizer import tax_tool
 import optimizer.grade_tool as grade_tool
 import data_api.constraints as cons_api
 import optimizer.rasp_slots as rasp_slots

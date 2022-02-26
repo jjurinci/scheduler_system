@@ -1,5 +1,5 @@
 import optimizer.grade_tool as grade_tool
-from movement.move_utilities import load_state
+from utilities.general_utilities import load_state
 
 """
 Given a timetable: the function iterates through all rasps, finds if they

@@ -2,6 +2,26 @@ import numpy as np
 import data_api.constraints as cons_api
 
 """
+Returns an empty grades object.
+Used for later timetable grading.
+"""
+def init_grades(rasps, rooms):
+    all_sem_ids = set()
+    for rasp in rasps:
+        rasp_sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in rasp_sem_ids:
+            all_sem_ids.add(sem_id)
+
+    grade_obj   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
+    grade_rooms = {"roomScore": 0, "capacityScore": 0, "computerScore": 0}
+    grades = {"rooms": {room_id:grade_rooms.copy() for room_id in rooms},
+              "profs": {rasp.professor_id:0 for rasp in rasps},
+              "nasts": {sem_id:0 for sem_id in all_sem_ids},
+              "all": grade_obj.copy()}
+    return grades
+
+
+"""
 Returns True if rasp doesn't need computers but its room has computers.
 """
 def is_weak_computer_problematic(state, rasp, room_id):
@@ -87,25 +107,6 @@ def is_rasp_problematic(state, rasp, room_id):
     return False
 
 
-"""
-Returns an empty grades object.
-Used for later timetable grading.
-"""
-def init_grades(rasps, rooms):
-    all_sem_ids = set()
-    for rasp in rasps:
-        rasp_sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
-        for sem_id in rasp_sem_ids:
-            all_sem_ids.add(sem_id)
-
-    grade_obj   = {"totalScore": 0, "roomScore": 0, "professorScore": 0, "capacityScore": 0, "computerScore": 0, "nastScore": 0}
-    grade_rooms = {"roomScore": 0, "capacityScore": 0, "computerScore": 0}
-    grades = {"rooms": {room_id:grade_rooms.copy() for room_id in rooms},
-              "profs": {rasp.professor_id:0 for rasp in rasps},
-              "nasts": {sem_id:0 for sem_id in all_sem_ids},
-              "all": grade_obj.copy()}
-    return grades
-
 
 """
 Returns a grade_obj that represents collisions along the rasp's all_dates path
@@ -113,7 +114,7 @@ Returns a grade_obj that represents collisions along the rasp's all_dates path
 The function and its subfunctions assume that rasp's all_dates have NOT yet been taxed.
 That's why they simulate taxing by adding "+1" to matrix positions.
 """
-def count_all_constraints(state, slot, rasp):
+def count_all_collisions(state, slot, rasp):
     room_occupied = state.mutable_constraints.rooms_occupied[slot.room_id]
     prof_occupied = state.mutable_constraints.profs_occupied[rasp.professor_id]
 
@@ -135,6 +136,7 @@ def count_rrule_in_matrix3D(state, rasp, matrix3D):
     all_dates = state.rasp_rrules[rasp.id]["all_dates"]
     return -30 * sum(np.sum(matrix3D[week, day, hour:(hour + rasp.duration)]+1 > 1)
                  for week,day,hour in all_dates)
+
 
 """
 Returns -30 * number of collisions along the rasp's all_dates path in nast_occupied.

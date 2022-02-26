@@ -1,9 +1,9 @@
 import random
 from tqdm import tqdm
-import optimizer.grade_tool          as grade_tool
-import optimizer.tax_tool.tax_tool   as tax_tool
-import optimizer.rasp_slots          as rasp_slots
-import optimizer.why_fail            as why_fail
+import optimizer.grade_tool as grade_tool
+import optimizer.tax_tool   as tax_tool
+import optimizer.rasp_slots as rasp_slots
+import optimizer.why_fail   as why_fail
 from utilities.my_types import State
 
 """
@@ -135,7 +135,7 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
 
         rasp_slots.update_rasp_rrules(state, new_slot, rasp0)
 
-        pure_new_slot_grade = grade_tool.count_all_constraints(state, new_slot, rasp0)
+        pure_new_slot_grade = grade_tool.count_all_collisions(state, new_slot, rasp0)
         new_grade_with_new_slot = {k:old_grade_without_old_slot[k] + pure_new_slot_grade[k] for k in pure_new_slot_grade}
 
         got_same_score   = new_grade_with_new_slot["totalScore"] == old_grade_with_old_slot["totalScore"]

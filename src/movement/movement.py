@@ -1,6 +1,6 @@
 import random
 import data_api.time_structure as time_api
-import optimizer.tax_tool.tax_tool as tax_tool
+import optimizer.tax_tool as tax_tool
 import optimizer.rasp_slots as rasp_slots
 from utilities.my_types import Slot
 from dateutil.rrule import rrulestr

@@ -1,6 +1,20 @@
 import optimizer.grade_tool as grade_tool
 
 """
+Returns an empty action object.
+Used to determine which dates can be skipped (banned).
+"""
+def init_action():
+    return {"ban_dates": set(),
+            "ban_capacity": False,
+            "ban_computers": False,
+            "ban_capacity_with_dates": set(),
+            "ban_computers_with_dates": set(),
+            "ban_capacity_with_computers": False,
+            "ban_dates_with_capacity_with_computers": set()}
+
+
+"""
 Updates action object with knowledge gained from new slot grade and old slot grade.
 E.g. if professor + nast grade is worse than the old total grade then we can skip
      that slot in the future because it will have the same problem.
@@ -103,18 +117,3 @@ def is_skippable(state, slot, rasp, action):
     if ban_slot in action["ban_dates_with_capacity_with_computers"] and grade_tool.is_capacity_problematic(state, rasp, room_id) and grade_tool.is_computer_problematic(state, rasp, room_id):
         return True
     return False
-
-
-"""
-Returns an empty action object.
-Used to determine which dates can be skipped (banned).
-"""
-def init_action():
-    return {"ban_dates": set(),
-            "ban_capacity": False,
-            "ban_computers": False,
-            "ban_capacity_with_dates": set(),
-            "ban_computers_with_dates": set(),
-            "ban_capacity_with_computers": False,
-            "ban_dates_with_capacity_with_computers": set()}
-

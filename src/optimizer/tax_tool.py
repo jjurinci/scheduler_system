@@ -1,8 +1,8 @@
-import optimizer.tax_tool.tax_rooms     as tax_rooms
-import optimizer.tax_tool.tax_nasts     as tax_nasts
-import optimizer.tax_tool.tax_profs     as tax_profs
-import optimizer.tax_tool.tax_capacity  as tax_capac
-import optimizer.tax_tool.tax_computers as tax_compu
+import optimizer.taxing.tax_rooms     as tax_rooms
+import optimizer.taxing.tax_nasts     as tax_nasts
+import optimizer.taxing.tax_profs     as tax_profs
+import optimizer.taxing.tax_capacity  as tax_capac
+import optimizer.taxing.tax_computers as tax_compu
 
 """
 Taxes:
