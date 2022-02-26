@@ -1,14 +1,20 @@
-import data_api.semesters  as seme_api
 import optimizer.grade_tool as grade_tool
 import pickle
 
+"""
+Returns complete state from a .pickle file.
+"""
 def load_state():
     name = "saved_timetables/errors_timetable.pickle"
     with open(name, "rb") as f:
         state = pickle.load(f)
     return state
 
-
+"""
+Given a timetable: the function iterates through all rasps, finds if they
+have room, prof, nast collisions in their slot OR capacity, computer problems
+in their room.
+"""
 def analyze_timetable():
     state = load_state()
     timetable = state.timetable

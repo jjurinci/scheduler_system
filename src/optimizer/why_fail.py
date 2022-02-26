@@ -1,5 +1,10 @@
 import optimizer.grade_tool as grade_tool
 
+"""
+Updates action object with knowledge gained from new slot grade and old slot grade.
+E.g. if professor + nast grade is worse than the old total grade then we can skip
+     that slot in the future because it will have the same problem.
+"""
 def failure_reason(state, action, slot, rasp, pure_new_slot_grade, pure_old_slot_grade):
     rasp_rrules = state.rasp_rrules
 
@@ -12,6 +17,7 @@ def failure_reason(state, action, slot, rasp, pure_new_slot_grade, pure_old_slot
 
     ban_slot = (day, hr) if rasp_rrules[rasp.id]["FREQ"] == "WEEKLY" else (week, day, hr)
 
+    # <= because values are negative (e.g. -1200 is worse than -1000)
     if new_professor + new_nast <= old_total:
         action["ban_dates"].add(ban_slot)
 
@@ -34,6 +40,12 @@ def failure_reason(state, action, slot, rasp, pure_new_slot_grade, pure_old_slot
         action["ban_dates_with_capacity_with_computers"].add(ban_slot)
 
 
+"""
+Updates action object with knowledge gained from new slot grade and old slot grade.
+It's a more rigorous version of the original function where no collisions are allowed.
+Any collisions and the slot will be skipped in the future.
+Used in special cases where no collisions are allowed.
+"""
 def failure_reason_rigorous(state, action, slot, rasp, pure_new_slot_grade):
     rasp_rrules = state.rasp_rrules
 
@@ -67,27 +79,9 @@ def failure_reason_rigorous(state, action, slot, rasp, pure_new_slot_grade):
         action["ban_dates_with_capacity_with_computers"].add(ban_slot)
 
 
-#def insufficient_capacity(state, rasp, room_id):
-#    rooms = state.rooms
-#    students_per_rasp = state.students_per_rasp
-#    return students_per_rasp[rasp.id] - rooms[room_id].capacity>0
-#
-#
-#def insufficient_computers(state, rasp, room_id):
-#    rooms = state.rooms
-#    return ((not rooms[room_id].has_computers and rasp.needs_computers) or (rooms[room_id].has_computers and not rasp.needs_computers))
-#
-#
-#def insufficient_strong_computers(state, rasp, room_id):
-#    rooms = state.rooms
-#    return not rooms[room_id].has_computers and rasp.needs_computers
-#
-#
-#def insufficient_weak_computers(state, rasp, room_id):
-#    rooms = state.rooms
-#    return rooms[room_id].has_computers and not rasp.needs_computers
-
-
+"""
+Returns True if slot is skippable by the optimizer algorithm.
+"""
 def is_skippable(state, slot, rasp, action):
     rasp_rrules = state.rasp_rrules
 
@@ -111,6 +105,10 @@ def is_skippable(state, slot, rasp, action):
     return False
 
 
+"""
+Returns an empty action object.
+Used to determine which dates can be skipped (banned).
+"""
 def init_action():
     return {"ban_dates": set(),
             "ban_capacity": False,

@@ -18,6 +18,12 @@ with open(path, "rb") as p:
     print_size(state)
 
 
+"""
+Tests if timetable constraints was properly graded.
+1) Initial constraints are reconstructed
+2) Each rasp is freshly taxed on initial constraints
+3) New and old constraints are compared to check for differences (no differences are allowed)
+"""
 def check_grade_is_0(state):
     timetable         = state.timetable
     NUM_WEEKS         = state.time_structure.NUM_WEEKS
@@ -98,6 +104,10 @@ def check_grade_is_0(state):
                         print(f"given is: ", given_nasts_occupied[sem_id][week, day, hour])
 
 
+"""
+Tests if there are any collisions between mandatory and optional rasps.
+Also tests if mandatory rasps collide between themselves.
+"""
 def no_mandatory_optional_collisions(state):
     timetable   = state.timetable
     rasp_rrules = state.rasp_rrules
@@ -132,6 +142,10 @@ def no_mandatory_optional_collisions(state):
                     assert not (mand_val >= 1 and opti_val >= 1), f"Mandatory and optional rasps collide at {sem_id}"
 
 
+"""
+Tests if there are subject type collisions (in optional rasps).
+E.g. hrmgmtP1 cannot collide with hrmgmtV1 in semesters.
+"""
 def no_subject_type_collisions(state):
     timetable   = state.timetable
     rasp_rrules = state.rasp_rrules
@@ -172,7 +186,9 @@ def no_subject_type_collisions(state):
                 break
 
 
-
+"""
+Tests if all rasps have RRULE all_dates paths.
+"""
 def all_rasps_have_dates(state):
     timetable = state.timetable
     rasp_rrules = state.rasp_rrules
@@ -191,6 +207,10 @@ def all_rasps_have_dates(state):
     assert not bads
 
 
+"""
+Tests if all rasps Slot(room_id, week, day, hour) are equal to the first date
+of all_dates path.
+"""
 def all_dates_correct_start(state):
     timetable = state.timetable
     rasp_rrules = state.rasp_rrules
@@ -201,6 +221,9 @@ def all_dates_correct_start(state):
         assert start_slot == all_dates[0]
 
 
+"""
+Tests if rasp's all_dates path are correctly calculated according to rasp's RRULE.
+"""
 def correct_rrules(state):
     timetable     = state.timetable
     rasp_rrules   = state.rasp_rrules

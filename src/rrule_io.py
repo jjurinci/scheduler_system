@@ -10,11 +10,16 @@ import optimizer.dp_optimizer_rrule as optimizer
 from data_api.utilities.my_types import State
 from data_api.utilities.get_size import get_size
 
+"""
+Starts solver whose goal is to construct a timetable with fewest collisions possible.
+Returns an State object that holds all information necessary to manipulate the timetable
+in the future.
+"""
 def request_solver():
     # Simulating data that user would send
     is_winter = True
     semesters                = seme_api.get_winter_semesters_dict() if is_winter else seme_api.get_summer_semesters_dict()
-    rasps                    = rasp_api.get_rasps_by_season(winter = is_winter)
+    rasps                    = rasp_api.get_rasps_by_season(is_winter)
     students_per_rasp        = seme_api.get_students_per_rasp_estimate(rasps)
     rooms                    = room_api.get_rooms_dict()
     time_structure           = time_api.get_time_structure()

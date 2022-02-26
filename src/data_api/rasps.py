@@ -1,16 +1,14 @@
 import json
 from dateutil.rrule import rrulestr
 from data_api.utilities.my_types import Rasp
-from data_api.semesters import get_semesters
+import data_api.semesters as seme_api
 from data_api.subjects  import get_subjects
 
-def test_rrule(the_rrule_str):
-    from dateutil.rrule import rrule, rrulestr
-
-    rrule = rrulestr(the_rrule_str)
-    print(rrule)
-
-
+"""
+1) Gets rasps from a .json file
+2) Fits them into Rasp type
+3) Returns the list of rasps
+"""
 def get_rasps():
     with open("database/input/rasps.json", "r") as fp:
         rasps = json.load(fp)["rasps"]
@@ -49,32 +47,20 @@ def get_rasps():
     return typed_rasps
 
 
+"""
+Returns rasps filtered by season (winter/summer).
+"""
 def get_rasps_by_season(winter = False):
-    chosen_season = "W" if winter else "S"
-
-    semesters = get_semesters()
     rasps = get_rasps()
-    subjects = get_subjects()
 
-    subjects_dict = {}
-    semesters_dict = {}
-
-    for subject in subjects:
-        subjects_dict[subject.id] = subject
-
-    for semester in semesters:
-        semesters_dict[semester.id] = semester
+    semesters = seme_api.get_winter_semesters_dict() if winter else \
+                seme_api.get_summer_semesters_dict()
 
     season_rasps = []
     for rasp in rasps:
-        subject_id = rasp.subject_id
-        semester_ids = subjects_dict[subject_id].mandatory_in_semester_ids
-        semester_ids += subjects_dict[subject_id].optional_in_semester_ids
-
-        for semester_id in semester_ids:
-            semester = semesters_dict[semester_id]
-            if semester.season == chosen_season:
-                season_rasps.append(rasp)
-                break
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        sem_id = sem_ids[0]
+        if sem_id in semesters:
+            season_rasps.append(rasp)
 
     return season_rasps

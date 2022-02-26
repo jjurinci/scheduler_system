@@ -1,12 +1,18 @@
 import numpy as np
 import data_api.constraints as cons_api
 
-
+"""
+Returns True if entire new_all_dates path has no collisions in given 3D matrix.
+"""
 def any_collisions_in_matrix3D(rasp, new_all_dates, matrix3D):
     return any(np.any(matrix3D[week, day, hour:(hour + rasp.duration)]>0)
                for week,day,hour in new_all_dates)
 
 
+"""
+Returns True if entire new_all_dates path has no collisions in nast_occupied.
+Only activated when rasp is mandatory in given semester.
+"""
 def any_collisions_in_mandatory_rasp(state, new_all_dates, rasp, nast_occupied):
     own_group_dates = cons_api.get_own_groups_all_dates(state, rasp)
     for week, day, hour in new_all_dates:
@@ -18,6 +24,10 @@ def any_collisions_in_mandatory_rasp(state, new_all_dates, rasp, nast_occupied):
     return False
 
 
+"""
+Returns True if entire new_all_dates path has no collisions in nast_occupied.
+Only activated when rasp is optional in given semester.
+"""
 def any_collisions_in_optional_rasp(state, new_all_dates, rasp, sem_id):
     nast_occupied = state.mutable_constraints.nasts_occupied[sem_id]
     optional_occupied = state.mutable_constraints.optionals_occupied[sem_id]
@@ -33,6 +43,10 @@ def any_collisions_in_optional_rasp(state, new_all_dates, rasp, sem_id):
     return False
 
 
+"""
+Returns True if entire new_all_dates path has no collisions in nasts_occupied.
+It checks all semesters of a rasp.
+"""
 def any_collisions_in_nasts(state, rasp, new_all_dates):
     nasts_occupied = state.mutable_constraints.nasts_occupied
     semesters = state.semesters

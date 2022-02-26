@@ -1,8 +1,12 @@
 import json
 import pandas as pd
-from collections import defaultdict
 from data_api.utilities.my_types import Subject
 
+"""
+1) Gets subjects from a .json file
+2) Fits them into Subject type
+3) Returns the list of subjects
+"""
 def get_subjects():
     with open("database/input/subjects.json", "r") as fp:
         subjects = json.load(fp)["subjects"]
@@ -19,34 +23,11 @@ def get_subjects():
     return typed_subjects
 
 
-def get_subject_by_id(subject_id):
-    subjects = get_subjects()
-    for sub in subjects:
-        if sub.id == subject_id:
-            return sub
-    return -1
-
-
-def get_subjects_with_rasps(rasps):
-    subject_rasps = defaultdict(lambda: defaultdict(set))
-    for rasp in rasps:
-        subject_rasps[rasp.subject_id][rasp.type].add(rasp)
-
-    subjects, seen = [], {}
-    for rasp in rasps:
-        if rasp.subject_id in seen:
-            continue
-
-        seen[rasp.subject_id] = True
-
-        sub = get_subject_by_id(rasp.subject_id)
-        if sub != -1:
-            subject = Subject(sub.id, sub.name, sub.mandatory_in_semester_ids,
-                              sub.optional_in_semester_ids, sub.user_id, subject_rasps[sub.id])
-            subjects.append(subject)
-    return subjects
-
-
+"""
+1) Gets subjects from a .csv file
+2) Fits them into a pandas Dataframe and converts every cell to string
+3) Returns the pandas Dataframe
+"""
 def get_subject_ids_csv():
     path = "database/input/csvs/subjects.csv"
     with open(path) as csv_file:

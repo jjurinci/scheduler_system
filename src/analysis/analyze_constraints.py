@@ -6,11 +6,16 @@ import data_api.rasps as rasp_api
 import data_api.semesters as seme_api
 import data_api.classrooms as room_api
 
-
+"""
+Returns:
+    1) rasps held in winter semesters
+    2) rasps held in summer semesters
+    3) approximate number of students per rasp
+"""
 def get_rasps_by_season():
     rasps = rasp_api.get_rasps()
     winter_semesters = seme_api.get_winter_semesters_dict()
-    students_estimate = seme_api.get_students_per_rasp_estimate(rasps)
+    students_per_rasp = seme_api.get_students_per_rasp_estimate(rasps)
 
     winter_rasps, summer_rasps = [], []
     for rasp in rasps:
@@ -20,17 +25,20 @@ def get_rasps_by_season():
         else:
             summer_rasps.append(rasp)
 
-    return winter_rasps, summer_rasps, students_estimate
+    return winter_rasps, summer_rasps, students_per_rasp
 
 
+"""
+Returns sum of all professor's rasp durations.
+"""
 def get_professor_rasps_duration(rasps, professor_id):
-    duration = 0
-    for rasp in rasps:
-        if rasp.professor_id == professor_id:
-            duration += int(rasp.duration)
-    return duration
+    return sum(rasp.duration for rasp in rasps if rasp.professor_id == professor_id)
 
 
+"""
+Given a row of weekdays where each weekday could be "T", "F", or a list of
+ranges like [2,4,8,9] the function returns free time (int) contained in that row.
+"""
 def get_free_time(row, NUM_HOURS):
     keys = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 
@@ -48,7 +56,17 @@ def get_free_time(row, NUM_HOURS):
     return free_time
 
 
-def check_capacity_free_time(rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_estimate):
+"""
+Function checks if there is enough free time in rooms to fit all rasps.
+
+1) Calculates free time for each room, then appends all rooms to a list
+2) Sorts that list by has_computers=False first, smallest capacity second, smallest free time third
+   This way the rooms with smallest resources are first in the list.
+3) Iterates through all rasps and tries to greedily fit them into the first
+   room that satisfies computer, capacity, and free time requirements.
+4) Returns True if all rasps could be fit, False otherwise
+"""
+def check_capacity_free_time(rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_per_rasp):
     constrained_rooms = {room.room_id : room for _, room in room_available.iterrows()}
     rooms_free_time = []
     for room in classrooms.values():
@@ -61,14 +79,14 @@ def check_capacity_free_time(rasps, classrooms, room_available, NUM_DAYS, NUM_HO
         rooms_free_time.append(room_obj)
 
 
-    # sort by has_computers=False first, by smallest capacity second
-    rooms_free_time.sort(key=lambda room: (room["has_computers"], room["capacity"]))
+    # sort by has_computers=False first, by smallest capacity second, by free_time third
+    rooms_free_time.sort(key=lambda room: (room["has_computers"], room["capacity"], room["free_time"]))
 
     fit_rasps_count = 0
     for rasp in rasps:
         for room_obj in rooms_free_time:
             if room_obj["has_computers"] == rasp.needs_computers and \
-               room_obj["capacity"] >= students_estimate[rasp.id] and \
+               room_obj["capacity"] >= students_per_rasp[rasp.id] and \
                room_obj["free_time"] - rasp.duration >= 0:
                    room_obj["free_time"] -= rasp.duration
                    fit_rasps_count += 1
@@ -77,6 +95,10 @@ def check_capacity_free_time(rasps, classrooms, room_available, NUM_DAYS, NUM_HO
     return fit_rasps_count == len(rasps)
 
 
+"""
+Returns True if string is a postiive integer.
+E.g. 0,1,2,3,4,... -> True
+"""
 def is_positive_integer(value: str, include_zero = False):
     try:
         num = int(value)
@@ -89,6 +111,13 @@ def is_positive_integer(value: str, include_zero = False):
         return False
 
 
+"""
+Returns a list of errors related to free time formatting in initial constraints csvs.
+E.g. "2,5,6,9" has no errors.
+     "abc" has errors. (strings)
+     "5,2" has errors. (start > end)
+     "2,5,7" has errors. (odd number of values)
+"""
 def is_valid_time(time: str, file_name, index, column, NUM_HOURS):
     if time == "T" or time == "F":
         return []
@@ -117,6 +146,15 @@ def is_valid_time(time: str, file_name, index, column, NUM_HOURS):
     return errors
 
 
+"""
+Analyzes classroom_available.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Foreign key existence in main table check
+    6) Free time check (all rasp.duration VS room free time)
+"""
 def analyze_classroom_available():
     path = "database/constraints/csvs/classroom_available.csv"
 
@@ -205,9 +243,9 @@ def analyze_classroom_available():
     if improper_format:
         return False
 
-    winter_rasps, summer_rasps, students_estimate = get_rasps_by_season()
-    winter_succeeded = check_capacity_free_time(winter_rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_estimate)
-    summer_succeeded = check_capacity_free_time(summer_rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_estimate)
+    winter_rasps, summer_rasps, students_per_rasp = get_rasps_by_season()
+    winter_succeeded = check_capacity_free_time(winter_rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_per_rasp)
+    summer_succeeded = check_capacity_free_time(summer_rasps, classrooms, room_available, NUM_DAYS, NUM_HOURS, students_per_rasp)
 
     if not winter_succeeded:
         print("Not enough (computer rooms, capacity, free time) given in rooms to schedule WINTER rasps.")
@@ -217,6 +255,15 @@ def analyze_classroom_available():
     return winter_succeeded and summer_succeeded
 
 
+"""
+Analyzes professor_available.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Foreign key existence in main table check
+    6) Free time check (prof's all rasp.duration VS prof's free time)
+"""
 def analyze_professor_available():
     path = "database/constraints/csvs/professor_available.csv"
 

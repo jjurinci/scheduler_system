@@ -1,5 +1,8 @@
 from data_api.utilities.my_types import Slot
 
+"""
+Returns Slot(room_id, week, day, hour) for given (week, day, hour).
+"""
 def get_possible_slots(state, rasp, week, day, hour = None):
     rooms_occupied = state.mutable_constraints.rooms_occupied
     NUM_HOURS      = state.time_structure.NUM_HOURS
@@ -14,6 +17,10 @@ def get_possible_slots(state, rasp, week, day, hour = None):
                     if hr+rasp.duration < NUM_HOURS])
 
 
+"""
+Returns a set of possible starting Slot(room_id, week, day, hour)s for a rasp.
+Used later to pick DTSTART of rasp.
+"""
 def get_rasp_slots(state, rasp):
     rasp_rrules = state.rasp_rrules
     pool = set()
@@ -37,6 +44,9 @@ def get_rasp_slots(state, rasp):
     return pool
 
 
+"""
+Updates rasp's DTSTART, UNTIL and all_dates to new values.
+"""
 def update_rasp_rrules(state, slot, rasp):
     rasp_rrules = state.rasp_rrules
     rrule_space = state.rrule_space
@@ -48,4 +58,3 @@ def update_rasp_rrules(state, slot, rasp):
     rasp_rrules[rasp.id]["DTSTART"] = all_dates[0]
     rasp_rrules[rasp.id]["UNTIL"] = all_dates[-1]
     rasp_rrules[rasp.id]["all_dates"] = all_dates
-

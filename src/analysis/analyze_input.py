@@ -9,7 +9,11 @@ import data_api.professors as prof_api
 import data_api.subjects as subj_api
 from datetime import datetime
 
-
+"""
+Returns True if all dates of a given rrule:
+1) Fit inside [START_SEMESTER_DATE, END_SEMESTER_DATE] interval AND
+2) Have valid academic hours (defined in timeblocks)
+"""
 def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_DATE: datetime, hour_to_index: dict, index):
     rrule_str = rrule_str[1:-1].replace("\\n", "\n")
     try:
@@ -38,11 +42,19 @@ def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_D
     return True
 
 
+"""
+Returns a list of invalid semester fks in subjects.csv.
+Invalid semester fk is one that doesn't exist as an id in semesters.csv.
+"""
 def invalid_semesterIds(semesterIds: str, real_semester_ids: set):
     foreign_keys = semesterIds.split(",")
     return [fk for fk in foreign_keys if fk != "" and fk not in real_semester_ids]
 
 
+"""
+Returns True if a string is float.
+E.g. "3.123" -> True, "a3.123" -> False
+"""
 def is_float(number: str):
     try:
         float(number)
@@ -51,7 +63,11 @@ def is_float(number: str):
         return False
 
 
-# Problem if "1.0" is passed as value
+"""
+Returns True if string is strictly a positive integer.
+E.g. 0,1,2,3,4,5,... -> True
+0.1, 1.3, ... -> False
+"""
 def is_positive_integer(value: str, include_zero = False):
     try:
         float_num = float(value)
@@ -68,26 +84,29 @@ def is_positive_integer(value: str, include_zero = False):
         return False
 
 
-# Valid number is number > 0.
-def is_valid_number(number: str):
-    upper_limit = 10**6
-    if is_float(number):
-        float_num = float(number)
-        if float_num > 0 and float_num < upper_limit:
-            return True
-    return False
-
-
+"""
+Returns True if string is either zero or one.
+"""
 def is_zero_or_one(number: str):
     if number=="0" or number=="1" or number=="0.0" or number=="1.0":
         return True
     return False
 
 
+"""
+Returns True if semester has a valid season string.
+"""
 def is_valid_season(value: str):
     return True if value=="W" or value=="S" else False
 
 
+"""
+Analyzes faculties.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Duplicate IDs
+"""
 def analyze_faculties():
     path = "database/input/csvs/faculties.csv"
 
@@ -107,7 +126,7 @@ def analyze_faculties():
             faculties = pd.DataFrame(faculties).fillna("").astype("str")
             faculties.index += 1
         except ValueError:
-            print(f"ERROR: Bad CSV format. Expected header length to be exactly 3.")
+            print(f"ERROR: Bad CSV format. Expected header length to be exactly 2.")
             return False
         except Exception as e:
             print(f"ERROR: Bad CSV format. {e}")
@@ -162,6 +181,14 @@ def analyze_faculties():
     return True
 
 
+"""
+Analyzes classrooms.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Duplicate IDs
+"""
 def analyze_classrooms():
     path = "database/input/csvs/classrooms.csv"
 
@@ -243,6 +270,14 @@ def analyze_classrooms():
     return True
 
 
+"""
+Analyzes professors.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Duplicate IDs
+"""
 def analyze_professors():
     path = "database/input/csvs/professors.csv"
 
@@ -321,6 +356,14 @@ def analyze_professors():
     return True
 
 
+"""
+Analyzes study_programmes.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Foreign key existence in main table check
+    5) Duplicate IDs
+"""
 def analyze_study_programmes():
     path = "database/input/csvs/study_programmes.csv"
 
@@ -401,6 +444,15 @@ def analyze_study_programmes():
     return True
 
 
+"""
+Analyzes semesters.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Foreign key existence in main table check
+    6) Duplicate IDs
+"""
 def analyze_semesters():
     path = "database/input/csvs/semesters.csv"
 
@@ -492,6 +544,15 @@ def analyze_semesters():
     return True
 
 
+"""
+Analyzes subjects.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Foreign key existence in main table check
+    6) Duplicate IDs
+"""
 def analyze_subjects():
     path = "database/input/csvs/subjects.csv"
 
@@ -596,6 +657,15 @@ def analyze_subjects():
     return True
 
 
+"""
+Analyzes rasps.csv:
+    1) .csv file size (Max. 50 MB)
+    2) Header length and property names
+    3) Non-NULL requirement for relevant fields
+    4) Value checks for relevant fields
+    5) Foreign key existence in main table check
+    6) Duplicate IDs
+"""
 def analyze_rasps():
     path = "database/input/csvs/rasps.csv"
 

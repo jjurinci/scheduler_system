@@ -2,22 +2,32 @@ import pickle
 import numpy as np
 from tabulate import tabulate
 import datetime
-from data_api.utilities.get_size import get_size
 
-
-def load_timetable():
+"""
+Returns complete state from a .pickle file.
+"""
+def load_state():
     name = "saved_timetables/zero_timetable.pickle"
     with open(name, "rb") as f:
         state = pickle.load(f)
     return state
 
 
+"""
+String representation of a rasp that will be shown in timetable.
+"""
 def show_object_str(show_object):
     rasp, room_id = show_object["rasp"], show_object["room_id"]
     rasp_repr = str(rasp.subject_id) + str(rasp.type) + str(rasp.group)
     return f"{rasp_repr} {room_id} {rasp.professor_id}"
 
 
+"""
+Constructs one week timetable "print_table" from given "week_matrix".
+"week_matrix" is already populated with rasps at relevant [day,hour]s, it's
+just the matter of filtering them by either (rooms, profs, semesters) and then
+converting them to string representation.
+"""
 def get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id="", by_room_id="", by_sem_id=""):
     week_matrix = week_matrix.copy()
     print_table = np.zeros((NUM_HOURS,NUM_DAYS + 1), dtype=np.ndarray)
@@ -49,8 +59,14 @@ def get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id="", by_room_id=
     return print_table
 
 
+"""
+Prints the timetable in stdout.
+3 timetable views are printed:
+- by rooms, by profs, and by semesters
+Can be redirected to a .txt file.
+"""
 def print_timetable():
-    state = load_timetable()
+    state = load_state()
     timetable = state.timetable
     rasp_rrules = state.rasp_rrules
     rasps = timetable.keys()
@@ -106,6 +122,5 @@ def print_timetable():
             print(f"{sem_id} WEEK {week+1} {date}")
             print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
             print("")
-
 
 print_timetable()

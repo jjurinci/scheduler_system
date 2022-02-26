@@ -2,6 +2,9 @@ import pickle
 import optimizer.grade_tool as grade_tool
 import analysis.analyze_movement as move_tool
 
+"""
+Returns complete state from a .pickle file.
+"""
 def load_state():
     name = "saved_timetables/zero_timetable.pickle"
     with open(name, "rb") as f:
@@ -9,6 +12,15 @@ def load_state():
     return state
 
 
+"""
+Given a rasp, function prints which rooms are available for the rasp to be moved to.
+Available means that there are capacity or computer problems AND that there is
+at least one free slot there (no rrule collisions of rooms, profs, and semesters).
+
+Function iterates through all rasps and prints available rooms for illustrative purposes.
+In practice, user would click on 1 rasp and function would return available rooms
+just for that rasp.
+"""
 def analyze_room_change():
     state = load_state()
     timetable = state.timetable

@@ -6,6 +6,11 @@ import optimizer.rasp_slots          as rasp_slots
 import optimizer.why_fail            as why_fail
 from data_api.utilities.my_types import State
 
+"""
+Fills the timetable with random slots.
+Slots are chosen with respect to rasp's rrule, but no measure to prevent collisions
+is taken.
+"""
 def set_random_timetable(state: State):
     print("Generating random timetable.")
     NUM_HOURS = state.time_structure.NUM_HOURS
@@ -28,6 +33,9 @@ def set_random_timetable(state: State):
         timetable[rasp] = slot
 
 
+"""
+Loop where each iteration is an attempt to optimize the timetable grade.
+"""
 def iterate(state, iterations=1000):
     set_random_timetable(state)
 
@@ -52,6 +60,23 @@ def iterate(state, iterations=1000):
             return
 
 
+"""
+Transformation function:
+    1) Randomly picks a problematic rasp (caled rasp0).
+       Problematic rasp has at least one of the following:
+       room, prof, nast, capacity, or computer collisions.
+    2) rasp0's current slot is untaxed from the grade.
+    3) List of new slots is generated according to rasp's rrule and then randomly shuffled
+    4) Iteration takes 1 by 1 slot and simulates taxing it
+    5) If better score was achieved (or equal score in 1 special case) then
+       that slot is chosen and loop breaks. Otherwise loop continues.
+    6) In case of new slot's failure to improve score, knowledge is extracted
+       why that slot failed -> similar slots are skipped in the future.
+    7) In case new slow was successfuly chosen, it is then taxed.
+    8) Function returns True if the algorithm converged, False otherwise.
+       "Converged" means that either all rasps have been scheduled with no collisions,
+       OR rasps have been scheduled with collisions but no further improvement could be found.
+"""
 def find_better_grade(state: State, unsuccessful_rasps: set):
     timetable   = state.timetable
     rasp_rrules = state.rasp_rrules

@@ -1,6 +1,9 @@
 import sys
+
+"""
+Returns the size of an object (recursive) in bytes.
+"""
 def get_size(obj, seen=None):
-    """Recursively finds size of objects"""
     size = sys.getsizeof(obj)
     if seen is None:
         seen = set()
@@ -20,6 +23,9 @@ def get_size(obj, seen=None):
     return size
 
 
+"""
+Prints state size in MB.
+"""
 def print_size(state):
     total = round(get_size(state) / 10**6,4)
     space = " " * (20 - len("TOTAL"))

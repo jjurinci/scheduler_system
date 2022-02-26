@@ -1,6 +1,9 @@
 import csv
 import json
 
+"""
+Reads a .csv file and converts it to a dictionary [column_name] = list(values).
+"""
 def csv_to_dict(path, name):
     with open(path) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=",")
@@ -27,11 +30,10 @@ def csv_to_dict(path, name):
         return json_dict
 
 
-def dict_to_json(path, dictionary):
-    with open(path, "w") as fp:
-        json.dump(dictionary, fp)
-
-
+"""
+Reads a .csv file and converts it to a dictionary [column_name] = list(values).
+Specifically designed for .csvs with initial constraints.
+"""
 def constraints_csv_to_dict(path, name):
     with open(path) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=",")
@@ -59,6 +61,15 @@ def constraints_csv_to_dict(path, name):
                 json_dict[name].append(obj)
 
         return json_dict
+
+
+"""
+Dumps a dictionary into a .json file.
+"""
+def dict_to_json(path, dictionary):
+    with open(path, "w") as fp:
+        json.dump(dictionary, fp)
+
 
 university               = csv_to_dict("database/input/csvs/universities.csv", "university")
 faculties                = csv_to_dict("database/input/csvs/faculties.csv",  "faculties")

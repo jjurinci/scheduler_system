@@ -1,3 +1,6 @@
+"""
+Detects computer problems and taxes them in grades.
+"""
 def tax_computers(state, room_id, rasp):
     grades = state.grades
     rooms = state.rooms
@@ -15,6 +18,10 @@ def tax_computers(state, room_id, rasp):
         grades["rooms"][room_id]["computerScore"] += -30*0.1
 
 
+"""
+Detects computer problems and untaxes them in grades.
+Used to undo the previous tax.
+"""
 def untax_computers(state, room_id, rasp):
     grades = state.grades
     rooms = state.rooms

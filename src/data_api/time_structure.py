@@ -3,23 +3,35 @@ from dateutil.rrule import rrulestr, rrule, DAILY
 from datetime import datetime, timedelta
 from data_api.utilities.my_types import Timeblock, TimeStructure
 
-
+"""
+Returns two dates:
+START_SEMESTER_DATE = date when the semester begins.
+END_SEMESTER_DATE   = date when the semester ends.
+"""
 def get_start_end_semester():
     with open("database/input/start_end_year.json", "r") as fp:
         start_end_year = json.load(fp)["start_end_year"][0]
 
-    start_year = start_end_year["start_year_date"]
-    end_year   = start_end_year["end_year_date"]
+    START_SEMESTER_DATE = start_end_year["start_year_date"]
+    END_SEMESTER_DATE   = start_end_year["end_year_date"]
 
-    day, month, year = list(map(lambda x: int(x), start_year.split(".")))
-    start_year = datetime(year, month, day)
+    day, month, year = list(map(lambda x: int(x), START_SEMESTER_DATE.split(".")))
+    START_SEMESTER_DATE = datetime(year, month, day)
 
-    day, month, year = list(map(lambda x: int(x), end_year.split(".")))
-    end_year = datetime(year, month, day)
+    day, month, year = list(map(lambda x: int(x), END_SEMESTER_DATE.split(".")))
+    END_SEMESTER_DATE = datetime(year, month, day)
 
-    return start_year, end_year
+    return START_SEMESTER_DATE, END_SEMESTER_DATE
 
 
+"""
+Returns "timeblocks" dictionary which holds academic hours format.
+For example:
+1: 08:00-08:45,
+2: 08:50-09:35,
+3: 09:40-10:25,
+...
+"""
 def get_timeblocks():
     with open("database/input/day_structure.json", "r") as fp:
         day_structure = json.load(fp)["day_structure"]
@@ -35,35 +47,55 @@ def get_timeblocks():
     return timeblocks
 
 
+"""
+Returns 2 dictionaries:
+hour_to_index = converts hour (e.g. "08:00") to index (e.g. 0)
+index_to_hour = converts index (e.g. 0) to hour (e.g. "08:00")
+"""
 def get_hour_index_structure(timeblocks):
-    hourmin_to_index = {}
-    index_to_hourmin = {}
+    hour_to_index = {}
+    index_to_hour = {}
     index = 0
     for tblock in timeblocks:
         start_hourmin = tblock.timeblock[:5]
-        hourmin_to_index[start_hourmin] = index
-        index_to_hourmin[index] = start_hourmin
+        hour_to_index[start_hourmin] = index
+        index_to_hour[index] = start_hourmin
         index += 1
 
-    return hourmin_to_index, index_to_hourmin
+    return hour_to_index, index_to_hour
 
 
-def old_weeks_between(start_date, end_date):
-    return (end_date-start_date).days // 7
+"""
+Returns TimeStructure object which contains all of the important time variables.
+"""
+def get_time_structure():
+    START_SEMESTER_DATE, END_SEMESTER_DATE = get_start_end_semester()
+    NUM_WEEKS  = weeks_between(START_SEMESTER_DATE, END_SEMESTER_DATE)
+    timeblocks = get_timeblocks()
+    NUM_DAYS   = 5
+    hour_to_index, index_to_hour = get_hour_index_structure(timeblocks)
+    NUM_HOURS = len(timeblocks)
+
+    return TimeStructure(START_SEMESTER_DATE, END_SEMESTER_DATE,
+                         NUM_WEEKS, NUM_DAYS, NUM_HOURS,
+                         timeblocks, hour_to_index, index_to_hour)
 
 
-#1-indexed -> "2021.10.4", "2021.10.4" = 1 week
+
+"""
+Returns weeks between two dates.
+It is 1-indexed -> "2021.10.4", "2021.10.4" will return 1 week
+"""
 def weeks_between(start_date, end_date):
     return ((end_date-start_date).days // 7) + 1
 
 
-def weeks_from_start(date : datetime):
-    START_SEMESTER_DATE = datetime(2021,10,4)
-    return (date - START_SEMESTER_DATE).days // 7
-
-
+"""
+Converts index triplet (week, day, hour) to matching datetime.
+e.g. (0,0,0) might return datetime(2021, 10, 4, 8, 0)
+"""
 def index_to_date(week: int, day: int, hour: int, index_to_hour: dict, NUM_HOURS: int):
-    START_SEMESTER_DATE, _ = get_start_end_semester()
+    #START_SEMESTER_DATE, _ = get_start_end_semester()
 
     # 2 (3rd) week, 1 tuesday, 13 (14th) hour
     hr, mins = 0, 0
@@ -82,8 +114,14 @@ def index_to_date(week: int, day: int, hour: int, index_to_hour: dict, NUM_HOURS
     return date
 
 
+"""
+Converts datetime to matching index triplet (week, day, hour).
+e.g. datetime(2021, 10, 4, 8, 0) might return (0,0,0)
+"""
 def date_to_index(date : datetime, hour_to_index: dict):
-    week = weeks_from_start(date)
+    #START_SEMESTER_DATE, _ = get_start_end_semester()
+    week = weeks_between(START_SEMESTER_DATE, date) - 1 #-1 because weeks_between is 1-indexed
+    #week = weeks_from_start(START_SEMESTER_DATE, date)
 
     day = date.weekday() # in Python 0 is Monday, 6 is Sunday
     hr, mins = str(date.hour), str(date.minute)
@@ -98,20 +136,25 @@ def date_to_index(date : datetime, hour_to_index: dict):
     return week,day,hour
 
 
+"""
+1) Finds a Monday in the week of "dtstart".
+2) Returns a list of 5 datetimes which are:
+    Monday, Tuesday, Wednesday, Thursday, Friday
+"""
 def all_dtstart_weekdays(dtstart):
     monday = (dtstart - timedelta(days=dtstart.weekday()))
     all_weekdays = rrule(dtstart=monday, freq=DAILY, count=5)
     return list(all_weekdays)
 
 
-def get_rrule_until(rasp_rrule):
-    if rasp_rrule._until != None:
-        return rasp_rrule._until
-    else:
-        last_date = list(rasp_rrule)[-1]
-        return last_date
-
-
+"""
+1) Takes an RRULE string
+2) Replaces DTSTART with NEW_DTSTART and UNTIL with NEW_UNTIL
+3) Extracts RRULE parameters (e.g. freq, interval, wkst, etc...)
+4) Creates a new RRULE with same parameters but NEW_DTSTART and NEW_UNTIL
+5) Converts all of the RRULE dates to indices (week, day, hour)
+6) Returns a list of these indices
+"""
 def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL, hour_to_index):
     old_dtstart_str, old_until_str = None, None
     for line in rasp_rrule.split():
@@ -150,6 +193,17 @@ def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL, hour_to_index):
     return rasp_dates
 
 
+"""
+Returns a dictionary rasp_rrules[rasp.id] = rrule_obj and also list rrule_space.
+rrule_obj consists of keys ["DTSTART", "UNTIL", "FREQ", "all_dates",
+                            "dtstart_weekdays", "possible_all_dates_idx"]
+
+rrule_space holds a list of "rrule_enumeration" dictionaries.
+rrule_enumeration[(week, day)] = all_dates
+(week, day) is possible DTSTART of a rasp and all_dates is a list of all rrule
+dates starting from (week, day).
+The idea is to memoize all of the possible "all_dates" of each rasp in "rrule_space".
+"""
 def init_rrule_objects(rasps, time_structure):
     hour_to_index = time_structure.hour_to_index
 
@@ -162,7 +216,8 @@ def init_rrule_objects(rasps, time_structure):
         until = rrule_obj._until
         dtstart_weekdays = all_dtstart_weekdays(dtstart) if rasp.random_dtstart_weekday else []
 
-        # At most 5 starting days defined by (week, day). Since we don't allow hour manipulation we can leave out the hour (e.g. no (week, day, hour))
+        # At most 5 starting days defined by (week, day).
+        # Since we don't allow hour manipulation we can leave out the hour (e.g. no (week, day, hour))
         rrule_enumeration = {}
         if rasp.random_dtstart_weekday:
             for dtstart_weekday in dtstart_weekdays:
@@ -191,19 +246,4 @@ def init_rrule_objects(rasps, time_structure):
 
     return rasp_rrules, rrule_space
 
-
-def get_time_structure():
-    START_SEMESTER_DATE, END_SEMESTER_DATE = get_start_end_semester()
-    NUM_WEEKS  = weeks_between(START_SEMESTER_DATE, END_SEMESTER_DATE)
-    timeblocks = get_timeblocks()
-    NUM_DAYS   = 5
-    hour_to_index, index_to_hour = get_hour_index_structure(timeblocks)
-    NUM_HOURS = len(timeblocks)
-
-    return TimeStructure(START_SEMESTER_DATE, END_SEMESTER_DATE,
-                         NUM_WEEKS, NUM_DAYS, NUM_HOURS,
-                         timeblocks, hour_to_index, index_to_hour)
-
-
-#TIMEBLOCKS = get_timeblocks()
-#HOURMIN_TO_INDEX, INDEX_TO_HOUR_MIN = get_hour_index_structure(TIMEBLOCKS)
+START_SEMESTER_DATE, END_SEMESTER_DATE = get_start_end_semester()

@@ -1,3 +1,6 @@
+"""
+Detects capacity problems and taxes them in grades.
+"""
 def tax_capacity(state, room_id, rasp):
     grades = state.grades
     students_per_rasp = state.students_per_rasp
@@ -10,6 +13,10 @@ def tax_capacity(state, room_id, rasp):
         grades["rooms"][room_id]["capacityScore"] += -30
 
 
+"""
+Detects capacity problems and untaxes them in grades.
+Used to undo the previous tax.
+"""
 def untax_capacity(state, room_id, rasp):
     grades = state.grades
     students_per_rasp = state.students_per_rasp

@@ -4,6 +4,11 @@ import data_api.semesters  as seme_api
 from data_api.utilities.my_types import InitialConstraints, MutableConstraints
 from collections import defaultdict
 
+"""
+Returns InitialConstraints object that contains initial constraints of:
+rooms, professors, and semesters.
+This object is not meant to be mutated.
+"""
 def get_initial_constraints(time_structure, rooms, rasps):
     NUM_WEEKS = time_structure.NUM_WEEKS
     NUM_DAYS  = time_structure.NUM_DAYS
@@ -15,6 +20,11 @@ def get_initial_constraints(time_structure, rooms, rasps):
     return InitialConstraints(rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied)
 
 
+"""
+Returns MutableConstraints object that contains initial constraints of:
+rooms, professors, and semesters.
+This object is meant to be mutated.
+"""
 def get_mutable_constraints(initial_constraints: InitialConstraints):
     rooms_occupied     = {k:v.copy() for k,v in initial_constraints.rooms_occupied.items()}
     profs_occupied     = {k:v.copy() for k,v in initial_constraints.profs_occupied.items()}
@@ -24,6 +34,13 @@ def get_mutable_constraints(initial_constraints: InitialConstraints):
     return MutableConstraints(rooms_occupied, profs_occupied, nasts_occupied, optionals_occupied)
 
 
+"""
+Returns a dictionary that for each rasp type (subject_id + type) has a set of rasps.
+E.g. matV: set(matV1, matV2, matV3)
+     matP: set(matP1)
+     ...
+Used for easier rasp group identification.
+"""
 def get_type_rasps(rasps):
     groups = defaultdict(lambda: set())
     for rasp in rasps:
@@ -32,6 +49,13 @@ def get_type_rasps(rasps):
     return dict(**groups)
 
 
+"""
+Returns a dictionary that for each subject_id has a set of (subject_id + type).
+E.g. mat:  set(matP, matV)
+     prog: set(progP, progV)
+     ...
+Used for easier rasp group identification.
+"""
 def get_subject_types(rasps):
     subject_types = defaultdict(lambda: set())
     for rasp in rasps:
@@ -40,6 +64,13 @@ def get_subject_types(rasps):
     return dict(**subject_types)
 
 
+"""
+TODO: Could be optimized further (memoization of groups all dates).
+1) Gets all (other) groups of a given rasp's type.
+   E.g. if "matV1" is a given rasp (type is "V") then it could get "matV2", "matV3"
+2) Returns a list of all rrule dates of other groups
+Used to identify where groups of a given rasp are being taxed.
+"""
 def get_own_groups_all_dates(state, rasp):
     groups = state.groups
     rasp_rrules = state.rasp_rrules
@@ -55,6 +86,13 @@ def get_own_groups_all_dates(state, rasp):
     return own_group_dates
 
 
+"""
+TODO: Could be optimized further (memoization of groups all dates).
+1) Gets all (other) groups of a given rasp, but of different types.
+   E.g. if "matV1" is given (type is "V") then it could get "matP1", "matP2"
+2) Returns a list of all rrule dates of other groups
+Used to identify where groups of a given subject are being taxed.
+"""
 def get_other_groups_all_dates(state, rasp):
     groups = state.groups
     subject_types = state.subject_types
@@ -71,35 +109,3 @@ def get_other_groups_all_dates(state, rasp):
                 for hr in range(hour, hour + rasp.duration):
                     other_all_dates.add((week, day, hr))
     return other_all_dates
-
-
-def get_rasp_priority(rasps, initial_constraints, time_structure, students_per_rasp, rooms):
-    profs_occupied = initial_constraints.profs_occupied
-    NUM_DAYS = time_structure.NUM_DAYS
-    NUM_HOURS = time_structure.NUM_HOURS
-
-    rasp_duration_per_prof = {}
-    for rasp in rasps:
-        if rasp.professor_id not in rasp_duration_per_prof:
-            rasp_duration_per_prof[rasp.professor_id] = rasp.duration
-        else:
-            rasp_duration_per_prof[rasp.professor_id] += rasp.duration
-
-
-    prof_free_time = {}
-    profs = set(rasp.professor_id for rasp in rasps)
-    for prof_id in profs:
-        for day in range(NUM_DAYS):
-            for hour in range(NUM_HOURS):
-                if profs_occupied[prof_id][0, day, hour]==0:
-                    if prof_id not in prof_free_time:
-                        prof_free_time[prof_id] = 1
-                    else:
-                        prof_free_time[prof_id] += 1
-
-    rasp_priority = {}
-    for rasp in rasps:
-        rasp_priority[rasp.id] = prof_free_time[rasp.professor_id] / rasp_duration_per_prof[rasp.professor_id]
-
-    sorted_rasps = sorted(rasps, key = lambda rasp: rasp_priority[rasp.id])
-    return sorted_rasps

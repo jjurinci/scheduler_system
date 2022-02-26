@@ -1,5 +1,8 @@
 import numpy as np
 
+"""
+Detects room collisions along the rasp's all dates path and taxes them.
+"""
 def tax_rrule_in_rooms(state, room_id, rasp):
     all_dates      = state.rasp_rrules[rasp.id]["all_dates"]
     room_occupied  = state.mutable_constraints.rooms_occupied[room_id]
@@ -12,6 +15,10 @@ def tax_rrule_in_rooms(state, room_id, rasp):
             update_grades_rooms(state, room_id, punish, plus=True)
 
 
+"""
+Detects room collisions along the rasp's all dates path and untaxes them.
+Used to undo the previous tax.
+"""
 def untax_rrule_in_rooms(state, room_id, rasp):
     all_dates      = state.rasp_rrules[rasp.id]["all_dates"]
     room_occupied  = state.mutable_constraints.rooms_occupied[room_id]
@@ -24,6 +31,9 @@ def untax_rrule_in_rooms(state, room_id, rasp):
             update_grades_rooms(state, room_id, punish, plus=False)
 
 
+"""
+Updates the grade with calculated "punish" score.
+"""
 def update_grades_rooms(state, room_id, punish, plus=True):
     grades = state.grades
     if plus:

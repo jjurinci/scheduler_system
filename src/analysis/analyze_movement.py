@@ -7,12 +7,24 @@ import optimizer.rasp_slots as rasp_slots
 from data_api.utilities.my_types import Slot
 from dateutil.rrule import rrulestr
 
+"""
+Returns complete state from a .pickle file.
+"""
 def load_state():
     name = "saved_timetables/zero_timetable.pickle"
     with open(name, "rb") as f:
         state = pickle.load(f)
     return state
 
+
+"""
+Given a rasp, function prints all available slots where rasp can be moved to.
+Available means that there are no rrule collisions of rooms, profs, and semesters.
+
+Function iterates through all rasps and prints their available slots for illustrative
+purposes. In practice, user would click on 1 rasp and function would return available
+slots just for that rasp.
+"""
 def analyze_movement(verbose = False, move = False):
     state = load_state()
     timetable = state.timetable
@@ -38,6 +50,16 @@ def analyze_movement(verbose = False, move = False):
             tax_tool.tax_all_constraints(state, new_slot, rasp)
 
 
+"""
+Function returns other free slots where rasp can be moved to (without collisions).
+It does this by finding the intersection of room, prof, and semester free times
+that are enough to fit rasp.duration.
+Finding room and prof free times is straightforward -> either there is 0=free or 1=occupied.
+Semester (nast) free times are more complicated because 1=occupied could still be
+free if it's occupied by parallel group or by parallel optional (in case optional
+rasp is being moved). The function does take proper care of that, but it's something
+to keep in mind.
+"""
 def get_other_free_slots(state, rasp, room_id):
     rooms_occupied = state.mutable_constraints.rooms_occupied
     profs_occupied = state.mutable_constraints.profs_occupied
