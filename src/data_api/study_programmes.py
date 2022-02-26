@@ -1,6 +1,6 @@
 import json
 import pandas as pd
-from data_api.utilities.my_types import StudyProgramme
+from utilities.my_types import StudyProgramme
 
 """
 1) Gets study programmes from a .json file

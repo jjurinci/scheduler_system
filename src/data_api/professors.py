@@ -2,7 +2,7 @@ import json
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from data_api.utilities.my_types import Professor
+from utilities.my_types import Professor
 
 """
 1) Gets professors from a .json file

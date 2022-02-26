@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from itertools import product, starmap
 from collections import defaultdict
-from data_api.utilities.my_types import Classroom, Slot
+from utilities.my_types import Classroom, Slot
 
 """
 1) Gets rooms from a .json file

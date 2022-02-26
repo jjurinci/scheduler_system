@@ -7,8 +7,8 @@ import data_api.timetable      as tabl_api
 import data_api.constraints    as cons_api
 import optimizer.grade_tool    as grade_tool
 import optimizer.dp_optimizer_rrule as optimizer
-from data_api.utilities.my_types import State
-from data_api.utilities.get_size import get_size
+from utilities.my_types import State
+from utilities.get_size import get_size
 
 """
 Starts solver whose goal is to construct a timetable with fewest collisions possible.

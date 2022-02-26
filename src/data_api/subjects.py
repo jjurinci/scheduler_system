@@ -1,6 +1,6 @@
 import json
 import pandas as pd
-from data_api.utilities.my_types import Subject
+from utilities.my_types import Subject
 
 """
 1) Gets subjects from a .json file

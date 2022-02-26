@@ -1,7 +1,7 @@
 import data_api.classrooms as room_api
 import data_api.professors as prof_api
 import data_api.semesters  as seme_api
-from data_api.utilities.my_types import InitialConstraints, MutableConstraints
+from utilities.my_types import InitialConstraints, MutableConstraints
 from collections import defaultdict
 
 """

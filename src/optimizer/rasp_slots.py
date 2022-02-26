@@ -1,4 +1,4 @@
-from data_api.utilities.my_types import Slot
+from utilities.my_types import Slot
 
 """
 Returns Slot(room_id, week, day, hour) for given (week, day, hour).

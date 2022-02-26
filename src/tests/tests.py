@@ -3,8 +3,8 @@ import numpy as np
 import data_api.time_structure as time_api
 from collections import defaultdict
 from dateutil.rrule import rrulestr
-from data_api.utilities.get_size import print_size, get_size
-from data_api.utilities.my_types import State, MutableConstraints
+from utilities.get_size import print_size, get_size
+from utilities.my_types import State, MutableConstraints
 from optimizer.tax_tool import tax_tool
 import optimizer.grade_tool as grade_tool
 import data_api.constraints as cons_api

@@ -4,7 +4,7 @@ import optimizer.grade_tool          as grade_tool
 import optimizer.tax_tool.tax_tool   as tax_tool
 import optimizer.rasp_slots          as rasp_slots
 import optimizer.why_fail            as why_fail
-from data_api.utilities.my_types import State
+from utilities.my_types import State
 
 """
 Fills the timetable with random slots.

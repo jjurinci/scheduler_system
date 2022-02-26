@@ -1,7 +1,7 @@
 import json
 from dateutil.rrule import rrulestr, rrule, DAILY
 from datetime import datetime, timedelta
-from data_api.utilities.my_types import Timeblock, TimeStructure
+from utilities.my_types import Timeblock, TimeStructure
 
 """
 Returns two dates:

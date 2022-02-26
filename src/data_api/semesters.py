@@ -2,7 +2,7 @@ import json
 import numpy as np
 import pandas as pd
 from collections import defaultdict, Counter
-from data_api.utilities.my_types import Semester
+from utilities.my_types import Semester
 import data_api.semesters as seme_api
 
 """

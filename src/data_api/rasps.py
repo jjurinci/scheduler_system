@@ -1,6 +1,6 @@
 import json
 from dateutil.rrule import rrulestr
-from data_api.utilities.my_types import Rasp
+from utilities.my_types import Rasp
 import data_api.semesters as seme_api
 from data_api.subjects  import get_subjects
 
@@ -64,3 +64,25 @@ def get_rasps_by_season(winter = False):
             season_rasps.append(rasp)
 
     return season_rasps
+
+"""
+Returns:
+    1) rasps held in winter semesters
+    2) rasps held in summer semesters
+    3) approximate number of students per rasp
+"""
+def get_rasps_with_students():
+    rasps = get_rasps()
+    winter_semesters = seme_api.get_winter_semesters_dict()
+    students_per_rasp = seme_api.get_students_per_rasp_estimate(rasps)
+
+    winter_rasps, summer_rasps = [], []
+    for rasp in rasps:
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        if sem_ids[0] in winter_semesters:
+            winter_rasps.append(rasp)
+        else:
+            summer_rasps.append(rasp)
+
+    return winter_rasps, summer_rasps, students_per_rasp
+

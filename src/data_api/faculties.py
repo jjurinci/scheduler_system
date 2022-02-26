@@ -1,6 +1,6 @@
 import json
 import pandas as pd
-from data_api.utilities.my_types import Faculty
+from utilities.my_types import Faculty
 
 """
 1) Gets faculties from a .json file

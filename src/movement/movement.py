@@ -4,7 +4,7 @@ import data_api.time_structure as time_api
 import optimizer.any_collisions as any_cols
 import optimizer.tax_tool.tax_tool as tax_tool
 import optimizer.rasp_slots as rasp_slots
-from data_api.utilities.my_types import Slot
+from utilities.my_types import Slot
 from dateutil.rrule import rrulestr
 
 """
