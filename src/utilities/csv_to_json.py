@@ -17,6 +17,8 @@ def csv_to_dict(path, name):
             else:
                 new_row = []
                 for i, val in enumerate(row):
+                    if "rrule" == keys[i]:
+                        val = val[1:-1]
                     if "_ids" in keys[i]:
                         new_row.append(val.split(","))
                     elif val == "":

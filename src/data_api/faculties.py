@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from utilities.my_types import Faculty
+from utilities.general_utilities import load_settings
 
 """
 1) Gets faculties from a .json file
@@ -8,7 +9,10 @@ from utilities.my_types import Faculty
 3) Returns the list of faculties
 """
 def get_faculties():
-    with open("database/input/faculties.json", "r") as fp:
+    settings = load_settings()
+    faculties_path = settings["path_faculties_json"]
+
+    with open(faculties_path, "r") as fp:
         faculties = json.load(fp)["faculties"]
 
     typed_faculties = []
@@ -26,8 +30,10 @@ def get_faculties():
 3) Returns the pandas Dataframe
 """
 def get_faculty_ids_csv():
-    path = "database/input/csvs/faculties.csv"
-    with open(path) as csv_file:
+    settings = load_settings()
+    faculties_path = settings["path_faculties_csv"]
+
+    with open(faculties_path) as csv_file:
         faculties = pd.read_csv(csv_file,
                                 delimiter=",",
                                 usecols=[0,1])

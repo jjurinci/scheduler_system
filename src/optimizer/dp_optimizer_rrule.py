@@ -133,6 +133,9 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
             continue
         cnt += 1
 
+        #print(rasp0, new_slot)
+        #print(rasp_rrules[rasp0.id])
+        #print(state.rrule_space[rasp_rrules[rasp0.id]["possible_all_dates_idx"]])
         rasp_slots.update_rasp_rrules(state, new_slot, rasp0)
 
         pure_new_slot_grade = grade_tool.count_all_collisions(state, new_slot, rasp0)

@@ -4,6 +4,7 @@ import pandas as pd
 from itertools import product, starmap
 from collections import defaultdict
 from utilities.my_types import Classroom, Slot
+from utilities.general_utilities import load_settings
 
 """
 1) Gets rooms from a .json file
@@ -11,7 +12,10 @@ from utilities.my_types import Classroom, Slot
 3) Returns the list of classrooms
 """
 def get_rooms():
-    with open("database/input/classrooms.json", "r") as fp:
+    settings = load_settings()
+    rooms_path = settings["path_classrooms_json"]
+
+    with open(rooms_path, "r") as fp:
         rooms = json.load(fp)["classrooms"]
 
     typed_rooms = []
@@ -32,8 +36,9 @@ def get_rooms():
 3) Returns the pandas Dataframe
 """
 def get_classroom_ids_csv():
-    path = "database/input/csvs/classrooms.csv"
-    with open(path) as csv_file:
+    settings = load_settings()
+    rooms_path = settings["path_classrooms_csv"]
+    with open(rooms_path) as csv_file:
         classrooms = pd.read_csv(csv_file,
                                  delimiter=",",
                                  usecols=[0,1,2,3,4])
@@ -47,7 +52,9 @@ def get_classroom_ids_csv():
 Returns initial room constraints from a .json file.
 """
 def get_rooms_constraints():
-    with open("database/constraints/classroom_available.json", "r") as fp:
+    settings = load_settings()
+    rooms_available_path = settings["path_classroom_available_json"]
+    with open(rooms_available_path, "r") as fp:
         rooms_available = json.load(fp)["classroom_available"]
     return rooms_available
 

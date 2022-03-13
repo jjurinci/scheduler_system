@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import data_api.semesters as seme_api
+from utilities.general_utilities import load_settings
 from analysis.input.input_utilities import invalid_semesterIds
 
 """
@@ -13,7 +14,8 @@ Analyzes subjects.csv:
     6) Duplicate IDs
 """
 def analyze_subjects():
-    path = "database/input/csvs/subjects.csv"
+    settings = load_settings()
+    path = settings["path_subjects_csv"]
 
     # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

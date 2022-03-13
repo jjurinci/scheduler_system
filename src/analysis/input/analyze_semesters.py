@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import data_api.study_programmes as stud_api
+from utilities.general_utilities import load_settings
 from analysis.input.input_utilities import is_positive_integer, is_valid_season
 
 """
@@ -13,7 +14,8 @@ Analyzes semesters.csv:
     6) Duplicate IDs
 """
 def analyze_semesters():
-    path = "database/input/csvs/semesters.csv"
+    settings = load_settings()
+    path = settings["path_semesters_csv"]
 
     # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -61,15 +63,15 @@ def analyze_semesters():
 
     #  None in required fields? Proper numbers given?
 
-    study_programme_ids = stud_api.get_study_programme_ids_csv()
+    #study_programme_ids = stud_api.get_study_programme_ids_csv()
     improper_format = False
     for index, row in semesters.iterrows():
         if not row.id or \
            not is_positive_integer(row.num_semester) or \
            not is_valid_season(row.season) or \
            not is_positive_integer(row.has_optional_subjects, include_zero=True) or \
-           not is_positive_integer(row.num_students) or \
-           not row.study_programme_id in study_programme_ids:
+           not is_positive_integer(row.num_students):
+           #not row.study_programme_id in study_programme_ids:
                improper_format = True
 
         if not row.id:
@@ -82,8 +84,8 @@ def analyze_semesters():
             print(f"ERROR: In semesters.csv -> In Row {index} \"has_optional_subjects\" is not a positive integer.")
         if not is_positive_integer(row.num_students):
             print(f"ERROR: In semesters.csv -> In Row {index} \"num_students\" is not a positive integer.")
-        if not row.study_programme_id in study_programme_ids:
-            print(f"ERROR: In semesters.csv -> In Row {index} foreign key \"study_programme_id\" with value '{row.study_programme_id}' doesn't exist as \"id\" in study programmes.")
+        #if not row.study_programme_id in study_programme_ids:
+        #    print(f"ERROR: In semesters.csv -> In Row {index} foreign key \"study_programme_id\" with value '{row.study_programme_id}' doesn't exist as \"id\" in study programmes.")
 
     if improper_format:
         return False

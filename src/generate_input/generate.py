@@ -214,7 +214,7 @@ def generate_semesters(NUM_RASPS):
     for _ in range(NUM_SEMESTERS):
         sem_id = next(semester_ids)
         num_students = get_num_students()
-        semester = {"id": sem_id + "_sem", "num_semester": "0", "season": "W",
+        semester = {"id": sem_id + "_sem", "num_semester": "1", "season": "W",
                     "has_optional_subjects": "0",
                     "num_students": str(num_students),
                     "study_programme_id": "abcd"}
@@ -269,7 +269,7 @@ def generate_subjects(rasps, semesters_dict):
         semester_idx = (semester_idx + 1) % NUM_SEMESTERS
 
     for semester_id in has_optionals:
-        semesters_dict[semester_id]["has_optionals"] = "1"
+        semesters_dict[semester_id]["has_optional_subjects"] = "1"
 
     #visualize_semester_mand_opts(rasps, subjects_dict, semesters_dict)
     return subjects_dict
@@ -307,11 +307,92 @@ def generate_rooms(NUM_RASPS, semesters_dict):
     return rooms_dict
 
 
-# TODO: Implement
 def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict):
-    pass
+    with open("generate_input/csvs/rasps.csv", "w") as f:
+        header_rasp = ["id", "professor_id", "subject_id", "type", "group", "duration", "needs_computers", "fix_at_room_id", "random_dtstart_weekday", "rrule"]
+        writer = csv.writer(f)
+        writer.writerow(header_rasp)
+        for rasp in rasps:
+            rrule = '\"' + rasp["rrule"] + '\"'
+            row = [rasp["id"], rasp["professor_id"], rasp["subject_id"], rasp["type"], rasp["group"], rasp["duration"], rasp["needs_computers"], rasp["fix_at_room_id"], rasp["random_dtstart_weekday"], rrule]
+            writer.writerow(row)
+
+    with open("generate_input/csvs/professors.csv", "w") as f:
+        header_prof = ["id", "first_name", "last_name"]
+        writer = csv.writer(f)
+        writer.writerow(header_prof)
+        for prof in professors:
+            row = [prof["id"], prof["first_name"], prof["last_name"]]
+            writer.writerow(row)
+
+    with open("generate_input/csvs/semesters.csv", "w") as f:
+        header_semester = ["id", "num_semester", "season", "has_optional_subjects", "num_students", "study_programme_id"]
+        writer = csv.writer(f)
+        writer.writerow(header_semester)
+        for sem in semesters_dict.values():
+            row = [sem["id"], sem["num_semester"], sem["season"], sem["has_optional_subjects"], sem["num_students"], sem["study_programme_id"]]
+            writer.writerow(row)
+
+    with open("generate_input/csvs/subjects.csv", "w") as f:
+        header_subject = ["id", "name", "mandatory_in_semester_ids", "optional_in_semester_ids"]
+        writer = csv.writer(f)
+        writer.writerow(header_subject)
+        for sub in subjects_dict.values():
+            mandatory_in_semester_ids = ",".join(sub["mandatory_in_semester_ids"])
+            optional_in_semester_ids  = ",".join(sub["optional_in_semester_ids"])
+            row = [sub["id"], sub["name"], mandatory_in_semester_ids, optional_in_semester_ids]
+            writer.writerow(row)
+
+    with open("generate_input/csvs/classrooms.csv", "w") as f:
+        header_classroom = ["id", "name", "capacity", "has_computers"]
+        writer = csv.writer(f)
+        writer.writerow(header_classroom)
+        for room in rooms_dict.values():
+            row = [room["id"], room["name"], room["capacity"], room["has_computers"]]
+            writer.writerow(row)
+
+    with open("generate_input/csvs/classroom_available.csv", "w") as f:
+        header_classroom_available = ["room_id", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        writer = csv.writer(f)
+        writer.writerow(header_classroom_available)
+
+    with open("generate_input/csvs/professor_available.csv", "w") as f:
+        header_professor_available = ["professor_id", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        writer = csv.writer(f)
+        writer.writerow(header_professor_available)
 
 
+def create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict):
+    with open("generate_input/jsons/rasps.json", "w") as f:
+        obj = {"rasps": rasps}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/professors.json", "w") as f:
+        obj = {"professors": professors}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/semesters.json", "w") as f:
+        obj = {"semesters": list(semesters_dict.values())}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/subjects.json", "w") as f:
+        obj = {"subjects": list(subjects_dict.values())}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/classrooms.json", "w") as f:
+        obj = {"classrooms": list(rooms_dict.values())}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/classroom_available.json", "w") as f:
+        obj = {"classroom_available": []}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/professor_available.json", "w") as f:
+        obj = {"professor_available": []}
+        json.dump(obj, f)
+
+
+#TODO: Add fixed hours to some of the rrules
 def generate_input(NUM_RASPS: int):
     rasps, professors = generate_rasps(NUM_RASPS)
     semesters_dict = generate_semesters(NUM_RASPS)
@@ -319,5 +400,6 @@ def generate_input(NUM_RASPS: int):
     rooms_dict = generate_rooms(NUM_RASPS, semesters_dict)
 
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+    create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
 
 generate_input(100)

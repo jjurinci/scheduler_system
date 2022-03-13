@@ -1,0 +1,125 @@
+{
+  "semesters": [
+    {
+      "id": "SYOD_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "108",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "LBIB_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "54",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "NAPJ_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "57",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "MRNQ_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "58",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "PZHL_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "59",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "FRNR_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "47",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "HMMI_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "47",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "ORGN_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "109",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "YBOY_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "60",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "ILMZ_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "55",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "DGUM_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "56",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "KAFI_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "57",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "RJXT_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "1",
+      "num_students": "59",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "MJGJ_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "55",
+      "study_programme_id": "abcd"
+    },
+    {
+      "id": "UGYU_sem",
+      "num_semester": "1",
+      "season": "W",
+      "has_optional_subjects": "0",
+      "num_students": "45",
+      "study_programme_id": "abcd"
+    }
+  ]
+}
+

@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from utilities.my_types import StudyProgramme
+from utilities.general_utilities import load_settings
 
 """
 1) Gets study programmes from a .json file
@@ -8,7 +9,10 @@ from utilities.my_types import StudyProgramme
 3) Returns the list of study programmes
 """
 def get_study_programmes():
-    with open("database/input/study_programmes.json", "r") as fp:
+    settings = load_settings()
+    study_programmes_path = settings["path_study_programmes_json"]
+
+    with open(study_programmes_path, "r") as fp:
         study_programmes = json.load(fp)["study_programmes"]
 
     typed_programmes = []
@@ -26,8 +30,9 @@ def get_study_programmes():
 3) Returns the pandas Dataframe
 """
 def get_study_programme_ids_csv():
-    path = "database/input/csvs/study_programmes.csv"
-    with open(path) as csv_file:
+    settings = load_settings()
+    study_programmes_path = settings["path_study_programmes_csv"]
+    with open(study_programmes_path) as csv_file:
         study_programmes = pd.read_csv(csv_file,
                                        delimiter=",",
                                        usecols=[0,1,2])

@@ -1,14 +1,26 @@
 import sys
 import pickle
+import json
 
 """
 Returns complete state from a .pickle file.
 """
 def load_state():
-    name = "saved_timetables/zero_timetable.pickle"
-    with open(name, "rb") as f:
+    settings = load_settings()
+    path = settings["path_state"]
+    with open(path, "rb") as f:
         state = pickle.load(f)
     return state
+
+
+"""
+Returns settings of the algorithm (paths, etc)
+"""
+def load_settings():
+    name = "settings.json"
+    with open(name, "r") as f:
+        settings = json.load(f)
+    return settings
 
 
 """

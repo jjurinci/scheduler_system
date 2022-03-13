@@ -3,6 +3,7 @@ import pandas as pd
 import data_api.rasps as rasp_api
 import data_api.professors as prof_api
 import data_api.time_structure as time_api
+from utilities.general_utilities import load_settings
 from analysis.constraints.constraints_utilities import get_free_time, get_professor_rasps_duration, is_valid_time
 
 
@@ -16,7 +17,8 @@ Analyzes professor_available.csv:
     6) Free time check (prof's all rasp.duration VS prof's free time)
 """
 def analyze_professor_available():
-    path = "database/constraints/csvs/professor_available.csv"
+    settings = load_settings()
+    path = settings["path_professor_available_csv"]
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

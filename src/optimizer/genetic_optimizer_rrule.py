@@ -37,8 +37,6 @@ def set_random_timetable(state: State):
 Loop where each iteration is an attempt to optimize the timetable grade.
 """
 def iterate(state, generations=10, iterations=1000):
-    genetic_pool = [set_random_timetable(state)] * generations
-
     BEST_GRADE = state.grades["all"].copy()
     print(0, BEST_GRADE)
 
@@ -170,4 +168,3 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
 
     #assert(grades["all"][k]<=0 and grades["all"][k] == new_grade_with_new_slot[k] for k in grades["all"])
     timetable[rasp0] = the_slot
-    return False

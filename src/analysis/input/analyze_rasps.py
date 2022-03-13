@@ -4,6 +4,7 @@ import data_api.subjects as subj_api
 import data_api.time_structure as time_api
 import data_api.professors as prof_api
 from datetime import datetime
+from utilities.general_utilities import load_settings
 from analysis.input.input_utilities import is_positive_integer, is_zero_or_one, is_valid_rrule
 
 """
@@ -16,7 +17,8 @@ Analyzes rasps.csv:
     6) Duplicate IDs
 """
 def analyze_rasps():
-    path = "database/input/csvs/rasps.csv"
+    settings = load_settings()
+    path = settings["path_rasps_csv"]
 
     # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
@@ -64,7 +66,6 @@ def analyze_rasps():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
-
     START_SEMESTER_DATE, END_SEMESTER_DATE = time_api.get_start_end_semester()
     START_SEMESTER_DATE = datetime(START_SEMESTER_DATE.year, START_SEMESTER_DATE.month, START_SEMESTER_DATE.day, 0, 0, 0)
     END_SEMESTER_DATE   = datetime(END_SEMESTER_DATE.year, END_SEMESTER_DATE.month, END_SEMESTER_DATE.day, 23, 59, 59)

@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from utilities.my_types import Subject
+from utilities.general_utilities import load_settings
 
 """
 1) Gets subjects from a .json file
@@ -8,7 +9,9 @@ from utilities.my_types import Subject
 3) Returns the list of subjects
 """
 def get_subjects():
-    with open("database/input/subjects.json", "r") as fp:
+    settings = load_settings()
+    subjects_path = settings["path_subjects_json"]
+    with open(subjects_path, "r") as fp:
         subjects = json.load(fp)["subjects"]
 
     typed_subjects = []
@@ -29,8 +32,9 @@ def get_subjects():
 3) Returns the pandas Dataframe
 """
 def get_subject_ids_csv():
-    path = "database/input/csvs/subjects.csv"
-    with open(path) as csv_file:
+    settings = load_settings()
+    subjects_path = settings["path_subjects_csv"]
+    with open(subjects_path) as csv_file:
         subjects = pd.read_csv(csv_file,
                                delimiter=",",
                                usecols=[0,1,2,3])

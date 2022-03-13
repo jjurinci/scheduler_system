@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from utilities.my_types import Professor
+from utilities.general_utilities import load_settings
 
 """
 1) Gets professors from a .json file
@@ -10,7 +11,9 @@ from utilities.my_types import Professor
 3) Returns the list of professors
 """
 def get_professors():
-    with open("database/input/professors.json", "r") as fp:
+    settings = load_settings()
+    professors_path = settings["path_professors_json"]
+    with open(professors_path, "r") as fp:
         professors = json.load(fp)["professors"]
 
     typed_professors = []
@@ -28,8 +31,9 @@ def get_professors():
 3) Returns the pandas Dataframe
 """
 def get_professor_ids_csv():
-    path = "database/input/csvs/professors.csv"
-    with open(path) as csv_file:
+    settings = load_settings()
+    professors_path = settings["path_professors_csv"]
+    with open(professors_path) as csv_file:
         professors = pd.read_csv(csv_file,
                                  delimiter=",",
                                  usecols=[0,1,2])
@@ -43,7 +47,9 @@ def get_professor_ids_csv():
 Returns initial professors constraints from a .json file.
 """
 def get_professors_constraints():
-    with open("database/constraints/professor_available.json", "r") as fp:
+    settings = load_settings()
+    professors_available_path = settings["path_professor_available_json"]
+    with open(professors_available_path, "r") as fp:
         prof_available = json.load(fp)["professor_available"]
     return prof_available
 

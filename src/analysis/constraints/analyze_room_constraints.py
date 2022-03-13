@@ -4,6 +4,7 @@ import data_api.rasps          as rasp_api
 import data_api.classrooms     as room_api
 import data_api.rasps          as rasp_api
 import data_api.time_structure as time_api
+from utilities.general_utilities import load_settings
 from analysis.constraints.constraints_utilities import check_capacity_free_time, is_valid_time
 
 """
@@ -16,7 +17,8 @@ Analyzes classroom_available.csv:
     6) Free time check (all rasp.duration VS room free time)
 """
 def analyze_room_available():
-    path = "database/constraints/csvs/classroom_available.csv"
+    settings = load_settings()
+    path = settings["path_classroom_available_csv"]
 
     # File size below 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from utilities.general_utilities import load_settings
 from analysis.input.input_utilities import is_positive_integer, is_zero_or_one
 
 """
@@ -11,7 +12,8 @@ Analyzes classrooms.csv:
     5) Duplicate IDs
 """
 def analyze_classrooms():
-    path = "database/input/csvs/classrooms.csv"
+    settings = load_settings()
+    path = settings["path_classrooms_csv"]
 
     # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

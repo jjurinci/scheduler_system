@@ -1,0 +1,16 @@
+id,num_semester,season,has_optional_subjects,num_students,study_programme_id
+SYOD_sem,1,W,0,108,abcd
+LBIB_sem,1,W,1,54,abcd
+NAPJ_sem,1,W,1,57,abcd
+MRNQ_sem,1,W,1,58,abcd
+PZHL_sem,1,W,1,59,abcd
+FRNR_sem,1,W,0,47,abcd
+HMMI_sem,1,W,0,47,abcd
+ORGN_sem,1,W,0,109,abcd
+YBOY_sem,1,W,1,60,abcd
+ILMZ_sem,1,W,1,55,abcd
+DGUM_sem,1,W,0,56,abcd
+KAFI_sem,1,W,1,57,abcd
+RJXT_sem,1,W,1,59,abcd
+MJGJ_sem,1,W,0,55,abcd
+UGYU_sem,1,W,0,45,abcd

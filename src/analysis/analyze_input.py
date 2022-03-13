@@ -7,8 +7,9 @@ import analysis.input.analyze_classrooms       as classrooms
 import analysis.input.analyze_professors       as professors
 
 def input_csvs():
-    faculties_success        = faculties.analyze_faculties()
-    study_programmes_success = study_programmes.analyze_study_programmes()
+    #faculties_success        = faculties.analyze_faculties()
+    #study_programmes_success = study_programmes.analyze_study_programmes()
+    faculties_success, study_programmes_success = True, True
     semesters_success        = semesters.analyze_semesters()
     subjects_success         = subjects.analyze_subjects()
     rasps_success            = rasps.analyze_rasps()

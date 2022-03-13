@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict, Counter
 from utilities.my_types import Semester
+from utilities.general_utilities import load_settings
 import data_api.semesters as seme_api
 
 """
@@ -11,7 +12,9 @@ import data_api.semesters as seme_api
 3) Returns the list of semesters
 """
 def get_semesters():
-    with open("database/input/semesters.json", "r") as fp:
+    settings = load_settings()
+    semesters_path = settings["path_semesters_json"]
+    with open(semesters_path, "r") as fp:
         semesters = json.load(fp)["semesters"]
 
     typed_semesters = []
@@ -32,8 +35,9 @@ def get_semesters():
 3) Returns the pandas Dataframe
 """
 def get_semester_ids_csv():
-    path = "database/input/csvs/semesters.csv"
-    with open(path) as csv_file:
+    settings = load_settings()
+    semesters_path = settings["path_semesters_csv"]
+    with open(semesters_path) as csv_file:
         semesters = pd.read_csv(csv_file,
                                 delimiter=",",
                                 usecols=[0,1,2,3,4,5])

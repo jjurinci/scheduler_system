@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from utilities.general_utilities import load_settings
 
 """
 Analyzes faculties.csv:
@@ -9,7 +10,8 @@ Analyzes faculties.csv:
     4) Duplicate IDs
 """
 def analyze_faculties():
-    path = "database/input/csvs/faculties.csv"
+    settings = load_settings()
+    path = settings["path_faculties_csv"]
 
     # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB

@@ -3,6 +3,7 @@ from dateutil.rrule import rrulestr
 from utilities.my_types import Rasp
 import data_api.semesters as seme_api
 from data_api.subjects  import get_subjects
+from utilities.general_utilities import load_settings
 
 """
 1) Gets rasps from a .json file
@@ -10,7 +11,9 @@ from data_api.subjects  import get_subjects
 3) Returns the list of rasps
 """
 def get_rasps():
-    with open("database/input/rasps.json", "r") as fp:
+    settings = load_settings()
+    rasp_path = settings["path_rasps_json"]
+    with open(rasp_path, "r") as fp:
         rasps = json.load(fp)["rasps"]
 
     subjects = get_subjects()
@@ -34,10 +37,10 @@ def get_rasps():
         rasp["optional_in_semester_ids"] = subject.optional_in_semester_ids
         rasp["needs_computers"] = True if rasp["needs_computers"] == "1" else False
         rasp["total_groups"] = rasp_groups[total_groups_key]
-        rasp["random_dtstart_weekday"] = True if rasp["random_dtstart_weekday"] else False
+        rasp["random_dtstart_weekday"] = True if rasp["random_dtstart_weekday"] == "1" else False
         rasp["user_id"] = None
         rrule = rasp["rrule"]
-        rrule = rrule[1:-1].replace("\\n", "\n")
+        rrule = rrule.replace("\\n", "\n")
         rasp["rrule"] = rrule
         rrule_obj = rrulestr(rrule)
         rasp["fixed_hour"] = True if rrule_obj._dtstart.hour != 0 else False

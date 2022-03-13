@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import data_api.faculties as facu_api
+from utilities.general_utilities import load_settings
 
 """
 Analyzes study_programmes.csv:
@@ -11,7 +12,8 @@ Analyzes study_programmes.csv:
     5) Duplicate IDs
 """
 def analyze_study_programmes():
-    path = "database/input/csvs/study_programmes.csv"
+    settings = load_settings()
+    path = settings["path_study_programmes_csv"]
 
     # File size above 50 MB?
     file_size = os.path.getsize(path) / (10**6) #MB
