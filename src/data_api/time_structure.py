@@ -229,9 +229,6 @@ def init_rrule_objects(rasps, time_structure):
         if rasp.random_dtstart_weekday:
             for dtstart_weekday in dtstart_weekdays:
                 all_dates = list(get_rrule_dates(rasp.rrule, dtstart_weekday, until, hour_to_index))
-                #if rasp.id == "AABO_P1":
-                #    print(dtstart_weekday)
-                #    print(all_dates)
                 #given_week, given_day, _ = date_to_index(dtstart_weekday, hour_to_index)
                 given_week, given_day = all_dates[0][0], all_dates[0][1]
                 key = (given_week, given_day)
@@ -251,7 +248,7 @@ def init_rrule_objects(rasps, time_structure):
         if rrule_enumeration not in rrule_space:
             rrule_space.append(rrule_enumeration)
 
-        dtstart_weekdays = [date_to_index(dtstart_, hour_to_index) for dtstart_ in dtstart_weekdays]
+        #dtstart_weekdays = [date_to_index(dtstart_, hour_to_index) for dtstart_ in dtstart_weekdays]
         dtstart_weekdays = []
         for week, day in rrule_enumeration.keys():
             dtstart_weekdays.append((week, day, -1))

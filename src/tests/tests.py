@@ -223,6 +223,7 @@ Tests if rasp's all_dates path are correctly calculated according to rasp's RRUL
 def correct_rrules(state):
     timetable     = state.timetable
     rasp_rrules   = state.rasp_rrules
+    rrule_space   = state.rrule_space
     hour_to_index = state.time_structure.hour_to_index
     index_to_hour = state.time_structure.index_to_hour
     NUM_HOURS     = state.time_structure.NUM_HOURS
@@ -232,7 +233,10 @@ def correct_rrules(state):
 
         chosen_dt_week, chosen_dt_day, chosen_dt_hour    = rasp_rrules[rasp.id]["DTSTART"]
         chosen_un_week, chosen_un_day, chosen_un_hour    = rasp_rrules[rasp.id]["UNTIL"]
-        correct_dt_week, correct_dt_day, correct_dt_hour = time_api.date_to_index(rrule._dtstart, hour_to_index)
+
+        correct_all_dates = time_api.get_rrule_dates(rasp.rrule, rrule._dtstart, rrule._until, hour_to_index)
+        correct_dt_week, correct_dt_day, correct_dt_hour = correct_all_dates[0]
+        #correct_dt_week, correct_dt_day, correct_dt_hour = time_api.date_to_index(rrule._dtstart, hour_to_index)
 
         if rasp.fixed_hour and chosen_dt_hour != correct_dt_hour:
             print(rrule._dtstart)
@@ -242,8 +246,13 @@ def correct_rrules(state):
 
         # random=1 -> Check if chosen DTSTART falls in the correct random range
         if rasp.random_dtstart_weekday:
-            viable_dtstarts = time_api.all_dtstart_weekdays(rrule._dtstart)
-            viable_dtstarts = [time_api.date_to_index(dt, hour_to_index) for dt in viable_dtstarts]
+            #viable_dtstarts = time_api.all_dtstart_weekdays(rrule._dtstart)
+            #viable_dtstarts = [time_api.date_to_index(dt, hour_to_index) for dt in viable_dtstarts]
+            viable_dtstarts = []
+            idx = rasp_rrules[rasp.id]["possible_all_dates_idx"]
+            for week, day in rrule_space[idx]:
+                viable_dtstarts.append((week, day, -1))
+
             good = False
             for week, day, _ in viable_dtstarts:
                 if week == chosen_dt_week and day == chosen_dt_day:
@@ -253,7 +262,8 @@ def correct_rrules(state):
                 print(f"{rasp.id} has {rasp.random_dtstart_weekday=} and {chosen_dt_week=} {chosen_dt_day=} but it's not viable for {correct_dt_week=} {correct_dt_day=}")
 
         # random=0 -> Enforce DTSTART day
-        elif chosen_dt_week != chosen_dt_day or chosen_dt_day != correct_dt_day:
+        elif chosen_dt_week != correct_dt_week or chosen_dt_day != correct_dt_day:
+            print(rasp)
             print(f"{rasp.id} has {rasp.random_dtstart_weekday=} and {chosen_dt_week=} and {correct_dt_week=} and {chosen_dt_day=} and {correct_dt_day=}")
 
         # At this point: *chosen* DTSTART week,day,hr is correct
