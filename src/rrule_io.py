@@ -43,7 +43,7 @@ def request_solver():
                           timetable, grades, rasp_rrules, rrule_space,
                           groups, subject_types)
 
-            optimizer.iterate(state, 1000)
+            optimizer.iterate(state, 100000)
 
             if state.grades["all"]["totalScore"] != 0:
                 #print(state.grades)

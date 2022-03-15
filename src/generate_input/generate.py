@@ -5,6 +5,8 @@ import math
 import string
 from itertools import product
 
+NUM_DAYS, NUM_HOURS = 5, 16
+
 
 def get_subject_ids():
     ALFABET = string.ascii_uppercase
@@ -103,7 +105,7 @@ def get_duration():
 
 def get_needs_computer():
     roll = random.random()
-    if roll > 0.6:
+    if roll > 0.5:
         return "0"
     else:
         return "1"
@@ -391,6 +393,154 @@ def create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict):
         obj = {"professor_available": []}
         json.dump(obj, f)
 
+def get_constraint_range():
+    constraint_range = []
+    range_pool = list(range(1, NUM_HOURS))
+
+    max_iters = random.choice([1,2,3])
+
+    for _ in range(max_iters):
+        first_number = random.choice(range_pool)
+        second_range_pool = list(range(first_number+1, NUM_HOURS+1))
+        if not second_range_pool:
+            break
+
+        second_number = random.choice(second_range_pool)
+        constraint_range.append(str(first_number))
+        constraint_range.append(str(second_number))
+
+        first_number = second_number + 1
+        range_pool = list(range(first_number+1, NUM_HOURS))
+        if not range_pool:
+            break
+
+    return constraint_range
+
+
+def tighten_room_free_time():
+    with open("generate_input/jsons/classrooms.json", "r") as f:
+        rooms = json.load(f)["classrooms"]
+
+    with open("generate_input/jsons/classroom_available.json", "r") as f:
+        room_available = json.load(f)["classroom_available"]
+        room_available_ids = {room["id"] for room in room_available}
+
+    NUM_ROOMS = len(rooms)
+    constrain_distribution = [0.05, 0.1, 0.2, 0.3, 0.4]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
+    CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
+
+    header = ["room_id", "monday", "tuesday", "wednesday", "thursday","friday"]
+    rows = [header]
+    for room in CONSTRAIN_ROOMS:
+        if room["id"] in room_available_ids:
+            continue
+
+        row = []
+        row.append(room["id"])
+        for day in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
+            option = "T"
+            roll = random.random()
+            if roll > 0.5:
+                option = "T"
+            elif roll > 0.3 and roll <= 0.5:
+                option = "F"
+            elif roll >= 0 and roll <= 0.3:
+                option = get_constraint_range()
+            row.append(option)
+
+        obj = {"room_id": row[0], "monday": row[1], "tuesday": row[2], "wednesday": row[3],
+               "thursday": row[4], "friday": row[5]}
+        room_available.append(obj)
+
+        for i, value in enumerate(row):
+            if i==0:
+                continue
+            if value != "T" and value != "F":
+                row[i] = ",".join(value)
+        rows.append(row)
+
+    with open("generate_input/csvs/classroom_available.csv", "w") as f:
+        writer = csv.writer(f)
+        for row in rows:
+            writer.writerow(row)
+
+    with open("generate_input/jsons/classroom_available.json", "w") as f:
+        obj = {"classroom_available": room_available}
+        json.dump(obj, f)
+
+
+def tighten_prof_free_time():
+    with open("generate_input/jsons/professor_available.json", "r") as f:
+        prof_available = json.load(f)
+
+
+def tighten_room_capacity():
+    with open("generate_input/jsons/classrooms.json", "r") as f:
+        rooms = json.load(f)
+
+
+def tighten_room_computers():
+    with open("generate_input/jsons/classrooms.json", "r") as f:
+        rooms = json.load(f)
+
+
+def tighten_num_rooms():
+    with open("generate_input/jsons/classrooms.json", "r") as f:
+        rooms = json.load(f)
+
+
+def tighten_semesters_per_subject():
+    with open("generate_input/jsons/semesters.json", "r") as f:
+        semesters = json.load(f)
+
+    with open("generate_input/jsons/subjects.json", "r") as f:
+        subjects = json.load(f)
+
+
+def tighten_students_per_semester():
+    with open("generate_input/jsons/semesters.json", "r") as f:
+        semesters = json.load(f)
+
+
+def tighten_rasp_needs_computers():
+    with open("generate_input/jsons/rasps.json", "r") as f:
+        rasps = json.load(f)
+
+
+def tighten_rasp_random_dtstart_weekday():
+    with open("generate_input/jsons/rasps.json", "r") as f:
+        rasps = json.load(f)
+
+
+def tighten_constraints():
+    tighten_options = ["room_free_time", "prof_free_time", "room_capacity", "room_pc",
+                       "num_rooms", "num_semesters_per_subject", "num_students_per_semester",
+                       "rasp_needs_computer", "rasp_random_dtstart_weekday"] #TODO: + fix_at_room_id
+
+    tighten_what = random.choice(tighten_options)
+
+    if tighten_what == "room_free_time":
+        tighten_room_free_time()
+    elif tighten_what == "prof_free_time":
+        tighten_prof_free_time()
+    elif tighten_what == "room_capacity":
+        tighten_room_capacity()
+    elif tighten_what == "room_pc":
+        tighten_room_computers()
+    elif tighten_what == "num_rooms":
+        tighten_num_rooms()
+    elif tighten_what == "num_semesters_per_subject":
+        tighten_semesters_per_subject()
+    elif tighten_what == "num_students_per_semester":
+        tighten_students_per_semester()
+    elif tighten_what == "rasp_needs_computer":
+        tighten_rasp_needs_computers()
+    elif tighten_what == "rasp_random_dtstart_weekday":
+        tighten_rasp_random_dtstart_weekday()
+
+
 
 #TODO: Add fixed hours to some of the rrules
 def generate_input(NUM_RASPS: int):
@@ -401,5 +551,6 @@ def generate_input(NUM_RASPS: int):
 
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+    tighten_room_free_time()
 
 generate_input(100)
