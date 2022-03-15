@@ -423,7 +423,7 @@ def tighten_room_free_time():
 
     with open("generate_input/jsons/classroom_available.json", "r") as f:
         room_available = json.load(f)["classroom_available"]
-        room_available_ids = {room["id"] for room in room_available}
+        room_available_ids = {room["room_id"] for room in room_available}
 
     NUM_ROOMS = len(rooms)
     constrain_distribution = [0.05, 0.1, 0.2, 0.3, 0.4]
@@ -461,11 +461,6 @@ def tighten_room_free_time():
                 row[i] = ",".join(value)
         rows.append(row)
 
-    with open("generate_input/csvs/classroom_available.csv", "w") as f:
-        writer = csv.writer(f)
-        for row in rows:
-            writer.writerow(row)
-
     with open("generate_input/jsons/classroom_available.json", "w") as f:
         obj = {"classroom_available": room_available}
         json.dump(obj, f)
@@ -477,7 +472,7 @@ def tighten_prof_free_time():
 
     with open("generate_input/jsons/professor_available.json", "r") as f:
         prof_available = json.load(f)["professor_available"]
-        prof_available_ids = {prof["id"] for prof in prof_available}
+        prof_available_ids = {prof["professor_id"] for prof in prof_available}
 
     NUM_PROFS = len(profs)
     constrain_distribution = [0.05, 0.1, 0.2, 0.3, 0.4]
@@ -515,11 +510,6 @@ def tighten_prof_free_time():
                 row[i] = ",".join(value)
         rows.append(row)
 
-    with open("generate_input/csvs/professor_available.csv", "w") as f:
-        writer = csv.writer(f)
-        for row in rows:
-            writer.writerow(row)
-
     with open("generate_input/jsons/professor_available.json", "w") as f:
         obj = {"professor_available": prof_available}
         json.dump(obj, f)
@@ -527,17 +517,68 @@ def tighten_prof_free_time():
 
 def tighten_room_capacity():
     with open("generate_input/jsons/classrooms.json", "r") as f:
-        rooms = json.load(f)
+        rooms = json.load(f)["classrooms"]
+
+    NUM_ROOMS = len(rooms)
+    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
+    CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
+    CONSTRAIN_ROOMS_IDS = set(room["id"] for room in CONSTRAIN_ROOMS)
+
+    for i,room in enumerate(rooms):
+        if room["id"] not in CONSTRAIN_ROOMS_IDS:
+            continue
+        capacity_reduce_distr = [0.05, 0.08, 0.1, 0.12, 0.15]
+        percent = random.choice(capacity_reduce_distr)
+        reduce_by = math.ceil(int(room["capacity"]) * percent)
+        new_capacity = int(room["capacity"]) - reduce_by
+        room["capacity"] = str(new_capacity)
+        rooms[i] = room
+
+    with open("generate_input/jsons/classrooms.json", "w") as f:
+        obj = {"classrooms": rooms}
+        json.dump(obj, f)
 
 
 def tighten_room_computers():
     with open("generate_input/jsons/classrooms.json", "r") as f:
-        rooms = json.load(f)
+        rooms = json.load(f)["classrooms"]
+        computer_rooms = [room for room in rooms if room["has_computers"]=="1"]
+
+    NUM_COMPUTER_ROOMS = len(computer_rooms)
+    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_ROOMS = math.ceil(NUM_COMPUTER_ROOMS * percent)
+    CONSTRAIN_ROOMS = random.sample(computer_rooms, NUM_CONSTRAIN_ROOMS)
+    CONSTRAIN_ROOMS_IDS = set(room["id"] for room in CONSTRAIN_ROOMS)
+
+    for i,room in enumerate(rooms):
+        if room["id"] not in CONSTRAIN_ROOMS_IDS:
+            continue
+        room["has_computers"] = "0"
+        rooms[i] = room
+
+    with open("generate_input/jsons/classrooms.json", "w") as f:
+        obj = {"classrooms": rooms}
+        json.dump(obj, f)
 
 
 def tighten_num_rooms():
     with open("generate_input/jsons/classrooms.json", "r") as f:
-        rooms = json.load(f)
+        rooms = json.load(f)["classrooms"]
+
+    NUM_ROOMS = len(rooms)
+    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
+    CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
+
+    rooms = [room for room in rooms if room not in CONSTRAIN_ROOMS]
+
+    with open("generate_input/jsons/classrooms.json", "w") as f:
+        obj = {"classrooms": rooms}
+        json.dump(obj, f)
 
 
 def tighten_semesters_per_subject():
@@ -598,9 +639,12 @@ def generate_input(NUM_RASPS: int):
     subjects_dict  = generate_subjects(rasps, semesters_dict)
     rooms_dict = generate_rooms(NUM_RASPS, semesters_dict)
 
-    create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
-    create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+    #create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+    #create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     tighten_room_free_time()
     tighten_prof_free_time()
+    tighten_room_capacity()
+    tighten_room_computers()
+    tighten_num_rooms()
 
 generate_input(100)
