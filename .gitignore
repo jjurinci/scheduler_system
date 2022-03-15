@@ -5,5 +5,5 @@ visual_timetables/
 saved_timetables/
 *.pickle
 *.txt
-generate_input/csvs
-generate_input/jsons
+generate_input/csvs/
+generate_input/jsons/

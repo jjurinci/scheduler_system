@@ -472,8 +472,57 @@ def tighten_room_free_time():
 
 
 def tighten_prof_free_time():
+    with open("generate_input/jsons/professors.json", "r") as f:
+        profs = json.load(f)["professors"]
+
     with open("generate_input/jsons/professor_available.json", "r") as f:
-        prof_available = json.load(f)
+        prof_available = json.load(f)["professor_available"]
+        prof_available_ids = {prof["id"] for prof in prof_available}
+
+    NUM_PROFS = len(profs)
+    constrain_distribution = [0.05, 0.1, 0.2, 0.3, 0.4]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_PROFS = math.ceil(NUM_PROFS * percent)
+    CONSTRAIN_PROFS = random.sample(profs, NUM_CONSTRAIN_PROFS)
+
+    header = ["professor_id", "monday", "tuesday", "wednesday", "thursday", "friday"]
+    rows = [header]
+    for prof in CONSTRAIN_PROFS:
+        if prof["id"] in prof_available_ids:
+            continue
+
+        row = []
+        row.append(prof["id"])
+        for day in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
+            option = "T"
+            roll = random.random()
+            if roll > 0.5:
+                option = "T"
+            elif roll > 0.3 and roll <= 0.5:
+                option = "F"
+            elif roll >= 0 and roll <= 0.3:
+                option = get_constraint_range()
+            row.append(option)
+
+        obj = {"professor_id": row[0], "monday": row[1], "tuesday": row[2], "wednesday": row[3],
+               "thursday": row[4], "friday": row[5]}
+        prof_available.append(obj)
+
+        for i, value in enumerate(row):
+            if i==0:
+                continue
+            if value != "T" and value != "F":
+                row[i] = ",".join(value)
+        rows.append(row)
+
+    with open("generate_input/csvs/professor_available.csv", "w") as f:
+        writer = csv.writer(f)
+        for row in rows:
+            writer.writerow(row)
+
+    with open("generate_input/jsons/professor_available.json", "w") as f:
+        obj = {"professor_available": prof_available}
+        json.dump(obj, f)
 
 
 def tighten_room_capacity():
@@ -552,5 +601,6 @@ def generate_input(NUM_RASPS: int):
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     tighten_room_free_time()
+    tighten_prof_free_time()
 
 generate_input(100)
