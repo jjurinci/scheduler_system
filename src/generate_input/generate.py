@@ -569,25 +569,60 @@ def tighten_num_rooms():
     with open("generate_input/jsons/classrooms.json", "r") as f:
         rooms = json.load(f)["classrooms"]
 
+    with open("generate_input/jsons/classroom_available.json", "r") as f:
+        room_available = json.load(f)["classroom_available"]
+
     NUM_ROOMS = len(rooms)
     constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
     CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
+    CONSTRAIN_ROOMS_IDS = set(room["id"] for room in CONSTRAIN_ROOMS)
 
     rooms = [room for room in rooms if room not in CONSTRAIN_ROOMS]
+    room_available = [room for room in room_available if room["room_id"] not in CONSTRAIN_ROOMS_IDS]
 
     with open("generate_input/jsons/classrooms.json", "w") as f:
         obj = {"classrooms": rooms}
         json.dump(obj, f)
 
+    with open("generate_input/jsons/classroom_available.json", "w") as f:
+        obj = {"classroom_available": room_available}
+        json.dump(obj, f)
+
 
 def tighten_semesters_per_subject():
-    with open("generate_input/jsons/semesters.json", "r") as f:
-        semesters = json.load(f)
-
     with open("generate_input/jsons/subjects.json", "r") as f:
-        subjects = json.load(f)
+        subjects = json.load(f)["subjects"]
+
+    with open("generate_input/jsons/semesters.json", "r") as f:
+        semesters = json.load(f)["semesters"]
+
+    NUM_SUBJECTS = len(subjects)
+    constrain_distribution = [0.01, 0.02, 0.03]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_SUBS = math.ceil(NUM_SUBJECTS * percent)
+    CONSTRAIN_SUBS = random.sample(subjects, NUM_CONSTRAIN_SUBS)
+    CONSTRAIN_SUBS_IDS = set(subject["id"] for subject in CONSTRAIN_SUBS)
+
+    for i,subject in enumerate(subjects):
+        if subject["id"] not in CONSTRAIN_SUBS_IDS:
+            continue
+        how_many_semesters = random.choice([1,2,3])
+        for _ in range(how_many_semesters):
+            semester = random.choice(semesters)
+            if semester["id"] not in subject["mandatory_in_semester_ids"] and \
+               semester["id"] not in subject["optional_in_semester_ids"]:
+                   mandatory = True if random.random() > 0.5 else False
+                   if mandatory:
+                       subject["mandatory_in_semester_ids"].append(semester["id"])
+                   else:
+                        subject["optional_in_semester_ids"].append(semester["id"])
+        subjects[i] = subject
+
+    with open("generate_input/jsons/subjects.json", "w") as f:
+        obj = {"subjects": subjects}
+        json.dump(obj, f)
 
 
 def tighten_students_per_semester():
@@ -654,7 +689,6 @@ def tighten_rasp_random_dtstart_weekday():
     for i,rasp in enumerate(rasps):
         if rasp["id"] not in CONSTRAIN_RASPS_IDS:
             continue
-        print(rasp["id"])
         rasp["random_dtstart_weekday"] = "0"
         rasps[i] = rasp
 
@@ -690,7 +724,6 @@ def tighten_constraints():
         tighten_rasp_random_dtstart_weekday()
 
 
-
 #TODO: Add fixed hours to some of the rrules
 def generate_input(NUM_RASPS: int):
     rasps, professors = generate_rasps(NUM_RASPS)
@@ -698,14 +731,15 @@ def generate_input(NUM_RASPS: int):
     subjects_dict  = generate_subjects(rasps, semesters_dict)
     rooms_dict = generate_rooms(NUM_RASPS, semesters_dict)
 
-    #create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
-    #create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+    create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+    create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
+
     tighten_room_free_time()
     tighten_prof_free_time()
     tighten_room_capacity()
     tighten_room_computers()
     tighten_num_rooms()
-    #tighten_semesters_per_subject()
+    tighten_semesters_per_subject()
     tighten_students_per_semester()
     tighten_rasp_needs_computers()
     tighten_rasp_random_dtstart_weekday()
