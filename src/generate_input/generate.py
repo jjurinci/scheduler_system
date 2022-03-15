@@ -541,6 +541,7 @@ def tighten_room_capacity():
         json.dump(obj, f)
 
 
+#TODO: Check if NUM_CONSTRAIN_ROOMS == 0 and then exit (all funcs)
 def tighten_room_computers():
     with open("generate_input/jsons/classrooms.json", "r") as f:
         rooms = json.load(f)["classrooms"]
@@ -591,17 +592,75 @@ def tighten_semesters_per_subject():
 
 def tighten_students_per_semester():
     with open("generate_input/jsons/semesters.json", "r") as f:
-        semesters = json.load(f)
+        semesters = json.load(f)["semesters"]
+
+    NUM_SEMESTERS = len(semesters)
+    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_SEMS = math.ceil(NUM_SEMESTERS * percent)
+    CONSTRAIN_SEMESTERS = random.sample(semesters, NUM_CONSTRAIN_SEMS)
+    CONSTRAIN_SEM_IDS = set(sem["id"] for sem in CONSTRAIN_SEMESTERS)
+
+    for i,semester in enumerate(semesters):
+        if semester["id"] not in CONSTRAIN_SEM_IDS:
+            continue
+        numstudents_reduce_distr = [0.05, 0.08, 0.1, 0.12, 0.15]
+        percent = random.choice(numstudents_reduce_distr)
+        reduce_by = math.ceil(int(semester["num_students"]) * percent)
+        new_num_students = int(semester["num_students"]) + reduce_by
+        semester["num_students"] = str(new_num_students)
+        semesters[i] = semester
+
+    with open("generate_input/jsons/semesters.json", "w") as f:
+        obj = {"semesters": semesters}
+        json.dump(obj, f)
 
 
 def tighten_rasp_needs_computers():
     with open("generate_input/jsons/rasps.json", "r") as f:
-        rasps = json.load(f)
+        rasps = json.load(f)["rasps"]
+        computer_rasps = [rasp for rasp in rasps if rasp["needs_computers"] == "0"]
+
+    NUM_COMPUTER_RASPS = len(computer_rasps)
+    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_RASPS = math.ceil(NUM_COMPUTER_RASPS * percent)
+    CONSTRAIN_RASPS = random.sample(computer_rasps, NUM_CONSTRAIN_RASPS)
+    CONSTRAIN_RASPS_IDS = set(rasp["id"] for rasp in CONSTRAIN_RASPS)
+
+    for i,rasp in enumerate(rasps):
+        if rasp["id"] not in CONSTRAIN_RASPS_IDS:
+            continue
+        rasp["needs_computers"] = "1"
+        rasps[i] = rasp
+
+    with open("generate_input/jsons/rasps.json", "w") as f:
+        obj = {"rasps": rasps}
+        json.dump(obj, f)
 
 
 def tighten_rasp_random_dtstart_weekday():
     with open("generate_input/jsons/rasps.json", "r") as f:
-        rasps = json.load(f)
+        rasps = json.load(f)["rasps"]
+        no_rnd_dt_rasps = [rasp for rasp in rasps if rasp["random_dtstart_weekday"] == "1"]
+
+    NUM_NODT_RASPS = len(no_rnd_dt_rasps)
+    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_RASPS = math.ceil(NUM_NODT_RASPS * percent)
+    CONSTRAIN_RASPS = random.sample(no_rnd_dt_rasps, NUM_CONSTRAIN_RASPS)
+    CONSTRAIN_RASPS_IDS = set(rasp["id"] for rasp in CONSTRAIN_RASPS)
+
+    for i,rasp in enumerate(rasps):
+        if rasp["id"] not in CONSTRAIN_RASPS_IDS:
+            continue
+        print(rasp["id"])
+        rasp["random_dtstart_weekday"] = "0"
+        rasps[i] = rasp
+
+    with open("generate_input/jsons/rasps.json", "w") as f:
+        obj = {"rasps": rasps}
+        json.dump(obj, f)
 
 
 def tighten_constraints():
@@ -646,5 +705,9 @@ def generate_input(NUM_RASPS: int):
     tighten_room_capacity()
     tighten_room_computers()
     tighten_num_rooms()
+    #tighten_semesters_per_subject()
+    tighten_students_per_semester()
+    tighten_rasp_needs_computers()
+    tighten_rasp_random_dtstart_weekday()
 
 generate_input(100)
