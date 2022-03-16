@@ -7,12 +7,18 @@ def get_possible_slots(state, rasp, week, day, hour = None):
     rooms_occupied = state.mutable_constraints.rooms_occupied
     NUM_HOURS      = state.time_structure.NUM_HOURS
 
+    room_pool = set()
+    if rasp.fix_at_room_id:
+        room_pool = set([rasp.fix_at_room_id])
+    else:
+        room_pool = set(room_id for room_id in rooms_occupied)
+
     if hour != None: # hour=0 should trigger this if
         return set([Slot(room_id, week, day, hour)
-                    for room_id in rooms_occupied])
+                    for room_id in room_pool])
     else:
         return set([Slot(room_id, week, day, hr)
-                    for room_id in rooms_occupied
+                    for room_id in room_pool
                     for hr in range(NUM_HOURS)
                     if hr+rasp.duration < NUM_HOURS])
 
@@ -24,23 +30,23 @@ Used later to pick DTSTART of rasp.
 def get_rasp_slots(state, rasp):
     rasp_rrules = state.rasp_rrules
     pool = set()
-    if rasp.random_dtstart_weekday and not rasp.fixed_hour:
+    if rasp.random_dtstart_weekday and rasp.fixed_hour == None:
         dtstart_weekdays = rasp_rrules[rasp.id]["dtstart_weekdays"]
         for given_week, given_day, _ in dtstart_weekdays:
             pool |= get_possible_slots(state, rasp, given_week, given_day)
 
-    elif rasp.random_dtstart_weekday and rasp.fixed_hour:
+    elif rasp.random_dtstart_weekday and rasp.fixed_hour != None:
         dtstart_weekdays = rasp_rrules[rasp.id]["dtstart_weekdays"]
-        for given_week, given_day, given_hour in dtstart_weekdays:
-            pool |= get_possible_slots(state, rasp, given_week, given_day, given_hour)
+        for given_week, given_day, _ in dtstart_weekdays:
+            pool |= get_possible_slots(state, rasp, given_week, given_day, rasp.fixed_hour)
 
-    elif not rasp.random_dtstart_weekday and not rasp.fixed_hour:
+    elif not rasp.random_dtstart_weekday and rasp.fixed_hour == None:
         given_week, given_day, _ = rasp_rrules[rasp.id]["DTSTART"]
         pool |= get_possible_slots(state, rasp, given_week, given_day)
 
-    elif not rasp.random_dtstart_weekday and rasp.fixed_hour:
-        given_week, given_day, given_hour = rasp_rrules[rasp.id]["DTSTART"]
-        pool |= get_possible_slots(state, rasp, given_week, given_day, given_hour)
+    elif not rasp.random_dtstart_weekday and rasp.fixed_hour != None:
+        given_week, given_day, _ = rasp_rrules[rasp.id]["DTSTART"]
+        pool |= get_possible_slots(state, rasp, given_week, given_day, rasp.fixed_hour)
     return pool
 
 

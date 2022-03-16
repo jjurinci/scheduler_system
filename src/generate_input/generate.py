@@ -572,6 +572,9 @@ def tighten_num_rooms():
     with open("generate_input/jsons/classroom_available.json", "r") as f:
         room_available = json.load(f)["classroom_available"]
 
+    with open("generate_rasps/jsons/rasps.json", "r") as f:
+        rasps = json.load(f)["rasps"]
+
     NUM_ROOMS = len(rooms)
     constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
     percent = random.choice(constrain_distribution)
@@ -582,12 +585,20 @@ def tighten_num_rooms():
     rooms = [room for room in rooms if room not in CONSTRAIN_ROOMS]
     room_available = [room for room in room_available if room["room_id"] not in CONSTRAIN_ROOMS_IDS]
 
+    for rasp in rasps:
+        if rasp["fix_at_room_id"] in CONSTRAIN_ROOMS_IDS:
+            rasp["fix_at_room_id"] = None
+
     with open("generate_input/jsons/classrooms.json", "w") as f:
         obj = {"classrooms": rooms}
         json.dump(obj, f)
 
     with open("generate_input/jsons/classroom_available.json", "w") as f:
         obj = {"classroom_available": room_available}
+        json.dump(obj, f)
+
+    with open("generate_input/jsons/rasps.json", "w") as f:
+        obj = {"rasps": rasps}
         json.dump(obj, f)
 
 
@@ -697,10 +708,38 @@ def tighten_rasp_random_dtstart_weekday():
         json.dump(obj, f)
 
 
-def tighten_constraints():
+def tighten_rasp_fix_at_room_id():
+    with open("generate_input/jsons/rasps.json", "r") as f:
+        rasps = json.load(f)["rasps"]
+
+    with open("generate_input/jsons/classrooms.json", "r") as f:
+        classrooms = json.load(f)["classrooms"]
+
+    NUM_RASPS = len(rasps)
+    constrain_distribution = [0.01, 0.02, 0.03]
+    percent = random.choice(constrain_distribution)
+    NUM_CONSTRAIN_RASPS = math.ceil(NUM_RASPS * percent)
+    CONSTRAIN_RASPS = random.sample(rasps, NUM_CONSTRAIN_RASPS)
+    CONSTRAIN_RASPS_IDS = set(rasp["id"] for rasp in CONSTRAIN_RASPS)
+
+    room_pool = random.sample(classrooms, 5)
+    room_pool = sorted(room_pool, key=lambda x: (int(x["capacity"]), int(x["has_computers"])), reverse=True)
+
+    for rasp in rasps:
+        if rasp["id"] not in CONSTRAIN_RASPS_IDS:
+            continue
+        rnd_room_id = random.choice(room_pool)["id"]
+        rasp["fix_at_room_id"] = rnd_room_id
+
+    with open("generate_input/jsons/rasps.json", "w") as f:
+        obj = {"rasps": rasps}
+        json.dump(obj, f)
+
+
+def tighten_a_constraint():
     tighten_options = ["room_free_time", "prof_free_time", "room_capacity", "room_pc",
                        "num_rooms", "num_semesters_per_subject", "num_students_per_semester",
-                       "rasp_needs_computer", "rasp_random_dtstart_weekday"] #TODO: + fix_at_room_id
+                       "rasp_needs_computer", "rasp_random_dtstart_weekday", "fix_at_room_id"]
 
     tighten_what = random.choice(tighten_options)
 
@@ -722,6 +761,8 @@ def tighten_constraints():
         tighten_rasp_needs_computers()
     elif tighten_what == "rasp_random_dtstart_weekday":
         tighten_rasp_random_dtstart_weekday()
+    elif tighten_what == "fix_at_room_id":
+        tighten_rasp_fix_at_room_id()
 
 
 #TODO: Add fixed hours to some of the rrules
@@ -734,14 +775,6 @@ def generate_input(NUM_RASPS: int):
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
 
-    tighten_room_free_time()
-    tighten_prof_free_time()
-    tighten_room_capacity()
-    tighten_room_computers()
-    tighten_num_rooms()
-    tighten_semesters_per_subject()
-    tighten_students_per_semester()
-    tighten_rasp_needs_computers()
-    tighten_rasp_random_dtstart_weekday()
+    tighten_rasp_fix_at_room_id()
 
 generate_input(100)
