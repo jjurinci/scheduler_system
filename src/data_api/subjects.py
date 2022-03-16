@@ -1,55 +1,44 @@
 import json
-import data_api.semesters as seme_api
-from collections import defaultdict
-from data_api.utilities.my_types import Subject
+import pandas as pd
+from utilities.my_types import Subject
+from utilities.general_utilities import load_settings
 
+"""
+1) Gets subjects from a .json file
+2) Fits them into Subject type
+3) Returns the list of subjects
+"""
 def get_subjects():
-    with open("database/input/subjects.json", "r") as fp:
+    settings = load_settings()
+    subjects_path = settings["path_subjects_json"]
+    with open(subjects_path, "r") as fp:
         subjects = json.load(fp)["subjects"]
 
     typed_subjects = []
     for subject in subjects:
         subject["rasps"] = None
-        subject["semesterIds"] = tuple(subject["semesterIds"])
-        subject["mandatory"] = True if subject["mandatory"]=="1" else False
+        subject["mandatory_in_semester_ids"] = tuple(subject["mandatory_in_semester_ids"]) if subject["mandatory_in_semester_ids"] != [''] else ()
+        subject["optional_in_semester_ids"] = tuple(subject["optional_in_semester_ids"]) if subject["optional_in_semester_ids"] != [''] else ()
+        subject["user_id"] = None
         subject = Subject(**{field: subject[field] for field in Subject._fields})
         typed_subjects.append(subject)
 
     return typed_subjects
 
 
-def get_subject_by_id(subject_id):
-    subjects = get_subjects()
-    for sub in subjects:
-        if sub.id == subject_id:
-            return sub
-    return -1
+"""
+1) Gets subjects from a .csv file
+2) Fits them into a pandas Dataframe and converts every cell to string
+3) Returns the pandas Dataframe
+"""
+def get_subject_ids_csv():
+    settings = load_settings()
+    subjects_path = settings["path_subjects_csv"]
+    with open(subjects_path) as csv_file:
+        subjects = pd.read_csv(csv_file,
+                               delimiter=",",
+                               usecols=[0,1,2,3])
 
-def get_subject_season(subject):
-    all_semesters = seme_api.get_semesters()
-    for sem in all_semesters:
-        if sem.id in subject.semesterIds:
-            return sem.season
+        subjects = pd.DataFrame(subjects).astype("str")
 
-    return -1
-
-
-def get_subjects_with_rasps(rasps):
-    subject_rasps = defaultdict(lambda: defaultdict(set))
-    for rasp in rasps:
-        subject_rasps[rasp.subjectId][rasp.type].add(rasp)
-
-    subjects, seen = [], {}
-    for rasp in rasps:
-        if rasp.subjectId in seen:
-            continue
-
-        seen[rasp.subjectId] = True
-
-        sub = get_subject_by_id(rasp.subjectId)
-        if sub != -1:
-            subject = Subject(sub.id, sub.name, sub.mandatory, \
-                              sub.semesterIds, sub.userId, \
-                              subject_rasps[sub.id])
-            subjects.append(subject)
-    return subjects
+    return set(subjects.id)

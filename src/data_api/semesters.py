@@ -1,95 +1,135 @@
 import json
-from collections import Counter
-from itertools import product
-from data_api.utilities.my_types import Semester
-import data_api.subjects as subj_api
+import numpy as np
+import pandas as pd
+from collections import defaultdict, Counter
+from utilities.my_types import Semester
+from utilities.general_utilities import load_settings
+import data_api.semesters as seme_api
 
+"""
+1) Gets semesters from a .json file
+2) Fits them into Semester type
+3) Returns the list of semesters
+"""
 def get_semesters():
-    with open("database/input/semesters.json", "r") as fp:
+    settings = load_settings()
+    semesters_path = settings["path_semesters_json"]
+    with open(semesters_path, "r") as fp:
         semesters = json.load(fp)["semesters"]
 
     typed_semesters = []
     for semester in semesters:
-        semester["numSemester"] = int(semester["numSemester"])
-        semester["hasOptionalSubjects"] = int(semester["hasOptionalSubjects"])
-        semester["numStudents"] = int(semester["numStudents"])
+        semester["num_semester"] = int(semester["num_semester"])
+        semester["has_optional_subjects"] = int(semester["has_optional_subjects"])
+        semester["num_students"] = int(semester["num_students"])
+        semester["user_id"] = None
         semester = Semester(**{field: semester[field] for field in Semester._fields})
         typed_semesters.append(semester)
 
     return typed_semesters
 
 
-def get_winter_semesters():
+"""
+1) Gets semesters from a .csv file
+2) Fits them into a pandas Dataframe and converts every cell to string
+3) Returns the pandas Dataframe
+"""
+def get_semester_ids_csv():
+    settings = load_settings()
+    semesters_path = settings["path_semesters_csv"]
+    with open(semesters_path) as csv_file:
+        semesters = pd.read_csv(csv_file,
+                                delimiter=",",
+                                usecols=[0,1,2,3,4,5])
+
+        semesters = pd.DataFrame(semesters).astype("str")
+
+    return set(semesters.id)
+
+
+"""
+Returns a dictionary of all semesters in "[sem_id] = Semester" form.
+"""
+def get_semesters_dict():
     semesters = get_semesters()
-    semesters = [sem for sem in semesters if sem.season == "W"]
+    semesters = {sem.id : sem for sem in semesters}
     return semesters
 
 
-def get_summer_semesters():
+"""
+Returns a dictionary of winter semesters in "[sem_id] = Semester" form.
+"""
+def get_winter_semesters_dict():
     semesters = get_semesters()
-    semesters = [sem for sem in semesters if sem.season == "S"]
+    semesters = {sem.id : sem for sem in semesters if sem.season == "W"}
     return semesters
 
 
-def get_nasts_one_semester(subjects, optionals=1):
-    if (not subjects and optionals) or optionals<0:
-        return frozenset()
-    elif not subjects:
-        return frozenset([frozenset()])
-
-    subject = subjects[0]
-    subjects = subjects[1:]
-    choices = frozenset(frozenset(x) for x in product(*subject.rasps.values()))
-    later_included = frozenset()
-    if not subject.mandatory:
-        later_included = get_nasts_one_semester(subjects, optionals)
-
-        if optionals:
-            included = get_nasts_one_semester(subjects, optionals-1)
-        else:
-            included = frozenset()
-    else:
-        included = get_nasts_one_semester(subjects, optionals)
-    included = frozenset(od|li for od, li in product(choices, included))
-    return included|later_included
+"""
+Returns a dictionary of summer semesters in "[sem_id] = Semester" form.
+"""
+def get_summer_semesters_dict():
+    semesters = get_semesters()
+    semesters = {sem.id:sem for sem in semesters if sem.season == "S"}
+    return semesters
 
 
-def get_nasts_all_semesters(rasps, winter):
-    subjects = subj_api.get_subjects_with_rasps(rasps)
+"""
+Returns a dictionary in form "[rasp.id] = number of students".
+Number of students per rasp is approximated by taking the number of students
+per semester and equally distributing it across rasps in that semester.
+"""
+def get_students_per_rasp_estimate(rasps):
+    semester_rasps = defaultdict(lambda: set())
+    for rasp in rasps:
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in sem_ids:
+            semester_rasps[sem_id].add(rasp)
 
-    semesters = None
-    if winter:
-        semesters = get_winter_semesters()
-    else:
-        semesters = get_summer_semesters()
+    optionals_per_sem = Counter()
+    for sem_id, rasps in semester_rasps.items():
+        optionals = [rasp for rasp in rasps if sem_id in rasp.optional_in_semester_ids]
+        optionals_per_sem[sem_id] += len(optionals)
 
-    nasts = {}
-    for semester in semesters:
-        sem_id, num_students = semester.id, semester.numStudents
-        sem_name, num_semester = semester.name, semester.numSemester
-        has_optional_subjects = semester.hasOptionalSubjects
+    semesters = seme_api.get_semesters_dict()
+    students_per_rasp = Counter()
+    for sem_id, rasps in semester_rasps.items():
+        num_students  = semesters[sem_id].num_students
+        num_optionals = optionals_per_sem[sem_id]
+        for rasp in rasps:
+            if sem_id in rasp.mandatory_in_semester_ids:
+                students_per_rasp[rasp.id] += (num_students / rasp.total_groups)
+            elif sem_id in rasp.optional_in_semester_ids:
+                students_per_rasp[rasp.id] += (num_students / num_optionals) / rasp.total_groups
 
-        #filtered_subjects = list(filter(lambda s: sem_id in s.semesterIds, subjects))
-        filtered_subjects = [sub for sub in subjects if sem_id in sub.semesterIds]
-        q = get_nasts_one_semester(filtered_subjects, optionals=has_optional_subjects)
+    for rasp_id in students_per_rasp:
+        students_per_rasp[rasp_id] = round(students_per_rasp[rasp_id], 2)
 
-        if q is None:
-            q = frozenset(frozenset())
-
-        nasts[(sem_id, sem_name, num_semester, num_students)] = q
-    return nasts
+    return students_per_rasp
 
 
-def get_students_per_rasp_estimate(nasts):
-    students_estimate = Counter()
-    for semester, the_nasts in nasts.items():
-        if not the_nasts:
-            continue
+"""
+Returns two dictionaries:
+1) nasts_occupied[sem_id]     = np.zeros[NUM_WEEKS][NUM_DAYS][NUM_HOURS]
+2) optionals_occupied[sem_id] = np.zeros[NUM_WEEKS][NUM_DAYS][NUM_HOURS]
 
-        num_students = semester[3]
-        stud_per_nast = num_students/len(the_nasts)
-        for nast in the_nasts:
-            margin = {rasp: stud_per_nast for rasp in nast}
-            students_estimate.update(margin)
+nasts_occupied represents collisions in semesters for both mandatory and optional rasps.
 
-    return students_estimate
+optionals_occupied is a helper dictionary that represents only optional rasps
+in semesters to aid future calculation.
+"""
+def get_nasts_occupied(NUM_WEEKS, NUM_DAYS, NUM_HOURS, rasps):
+    nasts_occupied, optionals_occupied = {}, {}
+    all_semester_ids = set()
+    for rasp in rasps:
+        sem_ids = rasp.mandatory_in_semester_ids + rasp.optional_in_semester_ids
+        for sem_id in sem_ids:
+            all_semester_ids.add(sem_id)
+
+    semesters = seme_api.get_semesters_dict()
+    for sem_id in all_semester_ids:
+        nasts_occupied[sem_id] = np.zeros((NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8)
+        if semesters[sem_id].has_optional_subjects:
+            optionals_occupied[sem_id] = np.zeros((NUM_WEEKS, NUM_DAYS, NUM_HOURS), dtype=np.uint8)
+
+    return nasts_occupied, optionals_occupied

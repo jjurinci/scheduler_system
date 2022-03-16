@@ -1,0 +1,28 @@
+{
+    "path_semesters_csv": "generate_input/csvs/semesters.csv",
+    "path_subjects_csv": "generate_input/csvs/subjects.csv",
+    "path_rasps_csv": "generate_input/csvs/rasps.csv",
+    "path_professors_csv": "generate_input/csvs/professors.csv",
+    "path_classrooms_csv": "generate_input/csvs/classrooms.csv",
+    "path_classroom_available_csv": "generate_input/csvs/classroom_available.csv",
+    "path_professor_available_csv": "generate_input/csvs/professor_available.csv",
+
+    "path_semesters_json": "generate_input/jsons/semesters.json",
+    "path_subjects_json": "generate_input/jsons/subjects.json",
+    "path_rasps_json": "generate_input/jsons/rasps.json",
+    "path_professors_json": "generate_input/jsons/professors.json",
+    "path_classrooms_json": "generate_input/jsons/classrooms.json",
+    "path_classroom_available_json": "generate_input/jsons/classroom_available.json",
+    "path_professor_available_json": "generate_input/jsons/professor_available.json",
+
+
+    "path_startendyear_json": "generate_input/jsons/common/start_end_year.json",
+    "path_daystructure_json": "generate_input/jsons/common/day_structure.json",
+
+    "path_state": "saved_timetables/errors_timetable.pickle",
+
+    "path_faculties_csv": "",
+    "path_studyprogrammes_csv": "",
+    "path_faculties_json": "",
+    "path_studyprogrammes_json": ""
+}
