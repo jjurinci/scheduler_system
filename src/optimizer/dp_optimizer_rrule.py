@@ -19,12 +19,8 @@ def set_random_timetable(state: State):
     # Generating a random timetable
     for rasp in timetable:
         slot = None
-        #TODO: Prevent infinite loops
-        while not slot:
-            pool = rasp_slots.get_rasp_slots(state, rasp)
-            try_slot = random.choice(tuple(pool))
-            if try_slot.hour + rasp.duration < NUM_HOURS:
-                slot = try_slot
+        pool = rasp_slots.get_rasp_slots(state, rasp)
+        slot = random.choice(tuple(pool))
 
         rasp_slots.update_rasp_rrules(state, slot, rasp)
         tax_tool.tax_all_constraints(state, slot, rasp)
