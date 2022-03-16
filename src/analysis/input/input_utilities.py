@@ -6,7 +6,7 @@ Returns True if all dates of a given rrule:
 1) Fit inside [START_SEMESTER_DATE, END_SEMESTER_DATE] interval AND
 2) Have valid academic hours (defined in timeblocks)
 """
-def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_DATE: datetime, hour_to_index: dict, index):
+def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_DATE: datetime, hour_to_index: dict, rasp, index):
     rrule_str = rrule_str[1:-1].replace("\\n", "\n")
     try:
         rrule_obj = rrulestr(rrule_str)
@@ -17,6 +17,7 @@ def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_D
     start_sem_date_repr = START_SEMESTER_DATE.strftime("%d/%m/%Y,%H:%M")
     end_sem_date_repr   = END_SEMESTER_DATE.strftime("%d/%m/%Y,%H:%M")
 
+    possible_indexes = list(hour_to_index.values())
     all_dates = list(rrule_obj)
     for rrule_date in all_dates:
         rrule_date_repr = rrule_date.strftime("%d/%m/%Y,%H:%M")
@@ -31,6 +32,13 @@ def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_D
         if hour_min != "00:00" and hour_min not in hour_to_index:
             print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min which is not an academic hour:min.")
             return False
+        if hour_min != "00:00":
+            index = hour_to_index[hour_min]
+            duration = int(rasp.duration)
+            if index + duration - 1 not in possible_indexes:
+                print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min that is too late to hold {duration=} academic hours.")
+                return False
+
     return True
 
 

@@ -4,6 +4,7 @@ import random
 import math
 import string
 from itertools import product
+from dateutil.rrule import rrulestr
 
 NUM_DAYS, NUM_HOURS = 5, 16
 
@@ -739,7 +740,7 @@ def tighten_rasp_fix_at_room_id():
 def tighten_a_constraint():
     tighten_options = ["room_free_time", "prof_free_time", "room_capacity", "room_pc",
                        "num_rooms", "num_semesters_per_subject", "num_students_per_semester",
-                       "rasp_needs_computer", "rasp_random_dtstart_weekday", "fix_at_room_id"]
+                       "rasp_needs_computer", "rasp_random_dtstart_weekday", "rasp_fix_at_room_id"]
 
     tighten_what = random.choice(tighten_options)
 
@@ -761,7 +762,7 @@ def tighten_a_constraint():
         tighten_rasp_needs_computers()
     elif tighten_what == "rasp_random_dtstart_weekday":
         tighten_rasp_random_dtstart_weekday()
-    elif tighten_what == "fix_at_room_id":
+    elif tighten_what == "rasp_fix_at_room_id":
         tighten_rasp_fix_at_room_id()
 
 
@@ -774,7 +775,5 @@ def generate_input(NUM_RASPS: int):
 
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
-
-    tighten_rasp_fix_at_room_id()
 
 generate_input(100)

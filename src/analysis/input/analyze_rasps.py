@@ -5,6 +5,7 @@ import data_api.time_structure as time_api
 import data_api.professors as prof_api
 import data_api.classrooms as room_api
 from datetime import datetime
+from dateutil.rrule import rrulestr
 from utilities.general_utilities import load_settings
 from analysis.input.input_utilities import is_positive_integer, is_zero_or_one, is_valid_rrule
 
@@ -77,6 +78,8 @@ def analyze_rasps():
     subject_ids = subj_api.get_subject_ids_csv()
     improper_format = False
 
+    #fixed_hour
+
     for index, row in rasps.iterrows():
         if not row.id or \
            row.professor_id not in professor_ids or \
@@ -87,7 +90,7 @@ def analyze_rasps():
            not is_zero_or_one(row.needs_computers) or \
            not is_zero_or_one(row.random_dtstart_weekday) or \
            not row.fix_at_room_id in classroom_ids and row.fix_at_room_id or \
-           not is_valid_rrule(row.rrule, START_SEMESTER_DATE, END_SEMESTER_DATE, hour_to_index, index):
+           not is_valid_rrule(row.rrule, START_SEMESTER_DATE, END_SEMESTER_DATE, hour_to_index, row, index):
                improper_format = True
 
         if not row.id:
