@@ -66,7 +66,7 @@ def get_other_free_slots(state, rasp, room_id):
     intersection = []
 
     days  = list(range(NUM_DAYS))  if not rasp.random_dtstart_weekday else [dt_day]
-    hours = list(range(NUM_HOURS)) if not rasp.fixed_hour else [dt_hour]
+    hours = list(range(NUM_HOURS)) if rasp.fixed_hour == None else [rasp.fixed_hour]
     hours = [hour for hour in hours if hour + rasp.duration < NUM_HOURS]
     for day in days:
         for hour in hours:

@@ -17,17 +17,15 @@ def set_random_timetable(state: State):
     timetable = state.timetable
 
     # Generating a random timetable
-    seen_avs = set()
     for rasp in timetable:
         slot = None
+        #TODO: Prevent infinite loops
         while not slot:
             pool = rasp_slots.get_rasp_slots(state, rasp)
-            pool -= seen_avs
             try_slot = random.choice(tuple(pool))
             if try_slot.hour + rasp.duration < NUM_HOURS:
                 slot = try_slot
 
-        seen_avs.add(slot)
         rasp_slots.update_rasp_rrules(state, slot, rasp)
         tax_tool.tax_all_constraints(state, slot, rasp)
         timetable[rasp] = slot
@@ -127,6 +125,7 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     the_slot = None
     cnt, skipped = 0, 0
     new_grade_with_new_slot = None
+
     for new_slot in pool_list:
         if why_fail.is_skippable(state, new_slot, rasp0, action):
             skipped += 1

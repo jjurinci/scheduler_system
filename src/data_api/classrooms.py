@@ -41,7 +41,7 @@ def get_classroom_ids_csv():
     with open(rooms_path) as csv_file:
         classrooms = pd.read_csv(csv_file,
                                  delimiter=",",
-                                 usecols=[0,1,2,3,4])
+                                 usecols=[0,1,2,3])
 
         classrooms = pd.DataFrame(classrooms).astype("str")
 

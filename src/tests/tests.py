@@ -238,7 +238,7 @@ def correct_rrules(state):
         correct_dt_week, correct_dt_day, correct_dt_hour = correct_all_dates[0]
         #correct_dt_week, correct_dt_day, correct_dt_hour = time_api.date_to_index(rrule._dtstart, hour_to_index)
 
-        if rasp.fixed_hour and chosen_dt_hour != correct_dt_hour:
+        if rasp.fixed_hour != None and chosen_dt_hour != correct_dt_hour:
             print(rrule._dtstart)
             print(f"{rasp.id} has fixed hour and {chosen_dt_hour=} != {correct_dt_hour=}")
         else:

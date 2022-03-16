@@ -2,6 +2,7 @@ import json
 from dateutil.rrule import rrulestr
 from utilities.my_types import Rasp
 import data_api.semesters as seme_api
+import data_api.time_structure as time_api
 from data_api.subjects  import get_subjects
 from utilities.general_utilities import load_settings
 
@@ -27,6 +28,9 @@ def get_rasps():
         else:
             rasp_groups[key] += 1
 
+    time_structure = time_api.get_time_structure()
+    hour_to_index = time_structure.hour_to_index
+
     typed_rasps = []
     for rasp in rasps:
         subject = subjects_dict[rasp["subject_id"]]
@@ -43,7 +47,13 @@ def get_rasps():
         rrule = rrule.replace("\\n", "\n")
         rasp["rrule"] = rrule
         rrule_obj = rrulestr(rrule)
-        rasp["fixed_hour"] = True if rrule_obj._dtstart.hour != 0 else False
+
+        rasp["fixed_hour"] = None
+        if rrule_obj._dtstart.hour != 0:
+            first_date = list(rrule_obj)[0]
+            hour = time_api.date_to_index(first_date, hour_to_index)[2]
+            rasp["fixed_hour"] = hour
+
         rasp = Rasp(**{field: rasp[field] for field in Rasp._fields})
         typed_rasps.append(rasp)
 

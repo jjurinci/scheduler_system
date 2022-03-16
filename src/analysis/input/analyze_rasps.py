@@ -3,6 +3,7 @@ import pandas as pd
 import data_api.subjects as subj_api
 import data_api.time_structure as time_api
 import data_api.professors as prof_api
+import data_api.classrooms as room_api
 from datetime import datetime
 from utilities.general_utilities import load_settings
 from analysis.input.input_utilities import is_positive_integer, is_zero_or_one, is_valid_rrule
@@ -72,6 +73,7 @@ def analyze_rasps():
     timeblocks          = time_api.get_timeblocks()
     hour_to_index, _    = time_api.get_hour_index_structure(timeblocks)
     professor_ids = prof_api.get_professor_ids_csv()
+    classroom_ids = room_api.get_classroom_ids_csv()
     subject_ids = subj_api.get_subject_ids_csv()
     improper_format = False
 
@@ -84,6 +86,7 @@ def analyze_rasps():
            not is_positive_integer(row.duration) or \
            not is_zero_or_one(row.needs_computers) or \
            not is_zero_or_one(row.random_dtstart_weekday) or \
+           not row.fix_at_room_id in classroom_ids and row.fix_at_room_id or \
            not is_valid_rrule(row.rrule, START_SEMESTER_DATE, END_SEMESTER_DATE, hour_to_index, index):
                improper_format = True
 
@@ -103,6 +106,8 @@ def analyze_rasps():
             print(f"ERROR: In rasps.csv -> In Row {index} \"needs_computers\" is not \"0\" or \"1\".")
         if not is_zero_or_one(row.random_dtstart_weekday):
             print(f"ERROR: In rasps.csv -> In Row {index} \"random_dtstart_weekday\" is not \"0\" or \"1\".")
+        if not row.fix_at_room_id in classroom_ids and row.fix_at_room_id:
+            print(f"ERROR: In rasps.csv -> In Row {index} \"fix_at_room_id\" doesn't exist as an ID in classrooms.")
         if not row.rrule:
             print(f"ERROR: In rasps.csv -> Row {index} has \"rrule\" of NULL.")
 
