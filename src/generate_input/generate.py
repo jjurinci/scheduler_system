@@ -4,10 +4,10 @@ import random
 import math
 import string
 from itertools import product
-from dateutil.rrule import rrulestr
 
-NUM_DAYS, NUM_HOURS = 5, 16
-
+with open("generate_input/generate_config.json", "r") as f:
+    config = json.load(f)
+    NUM_DAYS, NUM_HOURS = 5, 16
 
 def get_subject_ids():
     ALFABET = string.ascii_uppercase
@@ -53,84 +53,103 @@ def get_all_rrules():
 
 
 def get_one_rrule(rrules_pool):
-    roll = random.random()
+    options = ["NORMAL_WEEKLY", "SPECIAL_WEEKLY", "DAILY", "MONTHLY"]
+    weight_WEEKLY   = config["initial_input"]["rasps"]["NORMAL_WEEKLY_rrule"]
+    weight_S_WEEKLY = config["initial_input"]["rasps"]["SPECIAL_WEEKLY_rrule"]
+    weight_DAILY    = config["initial_input"]["rasps"]["DAILY_rrule"]
+    weight_MONTHLY  = config["initial_input"]["rasps"]["MONTHLY_rrule"]
+    weights = [weight_WEEKLY, weight_S_WEEKLY, weight_DAILY, weight_MONTHLY]
 
-    # DAILY
-    if roll > 0.85:
-        return random.choice(rrules_pool["daily"])
+    rrule_type  = random.choices(options, weights, k=1)[0]
 
-    # BIWEEKLY, TRIWEEKLY, etc
-    elif roll > 0.80 and roll <= 0.85:
+    if rrule_type == "NORMAL_WEEKLY":
+        return rrules_pool["weekly"][0]
+    elif rrule_type == "SPECIAL_WEEKLY":
         return random.choice(rrules_pool["weekly_other"])
-
-    # MONTHLY:
-    elif roll == 0.80:
+    elif rrule_type == "DAILY":
+        return random.choice(rrules_pool["daily"])
+    elif rrule_type == "MONTHLY":
         return random.choice(rrules_pool["monthly"])
 
-    # NORMAL WEEKLY
-    else:
-        return rrules_pool["weekly"][0]
 
 
 def get_types():
-    roll = random.random()
-    if roll > 0.9:
-        return ["P", "V", "S"]
-    else:
-        return ["P", "V"]
+    options = [["P,V"], ["P", "V", "S"]]
+    weight_PV  = config["initial_input"]["rasps"]["type_PV"]
+    weight_PVS = config["initial_input"]["rasps"]["type_PVS"]
+    weights = [weight_PV, weight_PVS]
+    the_type = random.choices(options, weights, k=1)[0]
+    return the_type
 
 
 def get_groups():
-    roll = random.random()
-    if roll > 0.98:
-        return ["1", "2", "3", "4"]
-    elif roll > 0.97 and roll <= 0.98:
-        return ["1", "2", "3"]
-    elif roll > 0.95 and roll <= 0.96:
-        return ["1", "2"]
-    else:
-        return ["1"]
+    options = [["1"], ["1", "2"], ["1", "2", "3"], ["1", "2", "3", "4"]]
+    weight_G1 = config["initial_input"]["rasps"]["group_1"]
+    weight_G2 = config["initial_input"]["rasps"]["group_2"]
+    weight_G3 = config["initial_input"]["rasps"]["group_3"]
+    weight_G4 = config["initial_input"]["rasps"]["group_4"]
+    weights = [weight_G1, weight_G2, weight_G3, weight_G4]
+    group = random.choices(options, weights, k=1)[0]
+    return group
 
 
 def get_duration():
-    roll = random.random()
-    if roll > 0.98:
-        return "4"
-    elif roll > 0.97 and roll <= 0.98:
-        return "3"
-    elif roll > 0.95 and roll <= 0.96:
-        return "1"
-    else:
-        return "2"
+    options = ["1", "2", "3", "4"]
+    weight_D1 = config["initial_input"]["rasps"]["duration_1"]
+    weight_D2 = config["initial_input"]["rasps"]["duration_2"]
+    weight_D3 = config["initial_input"]["rasps"]["duration_3"]
+    weight_D4 = config["initial_input"]["rasps"]["duration_4"]
+    weights = [weight_D1, weight_D2, weight_D3, weight_D4]
+    duration = random.choices(options, weights, k=1)[0]
+    return duration
 
 
 def get_needs_computer():
-    roll = random.random()
-    if roll > 0.5:
-        return "0"
-    else:
-        return "1"
+    options = ["0", "1"]
+    weight_0 = config["initial_input"]["rasps"]["not_needs_computers"]
+    weight_1 = config["initial_input"]["rasps"]["needs_computers"]
+    weights = [weight_0, weight_1]
+    needs_computers = random.choices(options, weights, k=1)[0]
+    return needs_computers
 
 
-def get_random_dtstart_weekday(rrule: str):
+def get_random_dtstart_weekday(rrule):
     freq = find_freq(rrule)
     if freq == "DAILY":
         return "0"
     else:
-        roll = random.random()
-        if roll > 0.8:
-            return "0"
-        else:
-            return "1"
+        options = ["0", "1"]
+        weight_0 = config["initial_input"]["rasps"]["not_random_dtstart"]
+        weight_1 = config["initial_input"]["rasps"]["random_dtstart"]
+        weights = [weight_0, weight_1]
+        random_dtstart = random.choices(options, weights, k=1)[0]
+        return random_dtstart
 
 
 def get_num_students():
-    roll = random.random()
+    options = ["high_number", "low_number"]
+    weight_H  = config["initial_input"]["semesters"]["num_students_high_probability"]
+    weight_L  = config["initial_input"]["semesters"]["num_students_low_probability"]
+    weights = [weight_H, weight_L]
+    number_type = random.choices(options, weights, k=1)[0]
 
-    if roll > 0.8:
-        return random.randint(90,120)
-    else:
-        return random.randint(45,65)
+    if number_type == "high_number":
+        high_interval = config["initial_input"]["semesters"]["num_students_high_interval"]
+        left, right = high_interval
+        return random.randint(left, right)
+    elif number_type == "low_number":
+        low_interval  = config["initial_input"]["semesters"]["num_students_low_interval"]
+        left, right = low_interval
+        return random.randint(left, right)
+
+
+def get_subject_mandatory():
+    options = ["mandatory", "optional"]
+    weight_M = config["initial_input"]["subjects"]["mandatory"]
+    weight_O = config["initial_input"]["subjects"]["optional"]
+    weights = [weight_M, weight_O]
+    option = random.choices(options, weights, k=1)[0]
+    return True if option == "mandatory" else False
 
 
 def find_freq(rrule: str):
@@ -143,7 +162,7 @@ def find_freq(rrule: str):
 
 
 def generate_professors(NUM_RASPS):
-    possible_professors_ratio = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+    possible_professors_ratio = config["initial_input"]["rasps"]["possible_prof_to_rasp_ratios"]
     NUM_PROFESSORS = math.ceil(random.choice(possible_professors_ratio) * NUM_RASPS)
     professors = []
     professor_ids = get_professor_ids()
@@ -157,11 +176,11 @@ def generate_professors(NUM_RASPS):
 def generate_rasps(NUM_RASPS):
     rasps = []
     rrules_pool = get_all_rrules()
-    subject_ids   = get_subject_ids()
+    subject_ids = get_subject_ids()
     professors = generate_professors(NUM_RASPS)
     cnt_rasps = 0
     while cnt_rasps < NUM_RASPS:
-        subject_id   = next(subject_ids)
+        subject_id = next(subject_ids)
         types = get_types()
         for type_ in types:
             groups = get_groups()
@@ -210,7 +229,7 @@ def generate_subject_rasps(rasps):
 
 
 def generate_semesters(NUM_RASPS):
-    possible_semesters_ratio = [0.05, 0.08, 0.1, 0.15, 0.2]
+    possible_semesters_ratio = config["initial_input"]["semesters"]["possible_sem_to_rasp_ratios"]
     NUM_SEMESTERS = math.ceil(random.choice(possible_semesters_ratio) * NUM_RASPS)
     semesters, semesters_dict = [], {}
     semester_ids = get_semester_ids()
@@ -261,8 +280,7 @@ def generate_subjects(rasps, semesters_dict):
     semesters_id_list = list(semesters_dict.keys())
     semester_idx = 0
     for subject_id in subjects_dict:
-        roll = random.random()
-        mandatory = False if roll > 0.6 else True
+        mandatory = get_subject_mandatory()
         semester_id = semesters_id_list[semester_idx]
         if mandatory:
             subjects_dict[subject_id]["mandatory_in_semester_ids"].append(semester_id)
@@ -288,9 +306,9 @@ def generate_rooms(NUM_RASPS, semesters_dict):
         differences.append(abs(num_students - num_students_range[i+1]))
     avg_diff = math.ceil(sum(diff for diff in differences) / len(differences))
 
-    possible_room_ratios = [0.1, 0.12, 0.15, 0.16, 0.17, 0.18, 0.22, 0.3]
+    possible_room_ratios = config["initial_input"]["rooms"]["possible_room_to_rasp_ratios"]
     NUM_ROOMS = math.ceil(random.choice(possible_room_ratios) * NUM_RASPS)
-    possible_has_computers_ratios = [0.2, 0.3, 0.35, 0.4, 0.5]
+    possible_has_computers_ratios = config["initial_input"]["rooms"]["possible_computer_room_percentages"]
     NUM_COMPUTER_ROOMS = math.ceil(random.choice(possible_has_computers_ratios) * NUM_ROOMS)
 
     rooms_dict = {}
@@ -427,7 +445,7 @@ def tighten_room_free_time():
         room_available_ids = {room["room_id"] for room in room_available}
 
     NUM_ROOMS = len(rooms)
-    constrain_distribution = [0.05, 0.1, 0.2, 0.3, 0.4]
+    constrain_distribution = config["later_constraints"]["room_free_time"]["possible_num_rooms"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
     CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
@@ -441,14 +459,15 @@ def tighten_room_free_time():
         row = []
         row.append(room["id"])
         for day in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
-            option = "T"
-            roll = random.random()
-            if roll > 0.5:
-                option = "T"
-            elif roll > 0.3 and roll <= 0.5:
-                option = "F"
-            elif roll >= 0 and roll <= 0.3:
+            options = ["T", "F", "range"]
+            weight_T = config["later_constraints"]["room_free_time"]["room_T"]
+            weight_F = config["later_constraints"]["room_free_time"]["room_F"]
+            weight_R = config["later_constraints"]["room_free_time"]["room_range"]
+            weights  = [weight_T, weight_F, weight_R]
+            option = random.choices(options, weights, k=1)[0]
+            if option == "range":
                 option = get_constraint_range()
+
             row.append(option)
 
         obj = {"room_id": row[0], "monday": row[1], "tuesday": row[2], "wednesday": row[3],
@@ -476,7 +495,7 @@ def tighten_prof_free_time():
         prof_available_ids = {prof["professor_id"] for prof in prof_available}
 
     NUM_PROFS = len(profs)
-    constrain_distribution = [0.05, 0.1, 0.2, 0.3, 0.4]
+    constrain_distribution = config["later_constraints"]["prof_free_time"]["possible_num_profs"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_PROFS = math.ceil(NUM_PROFS * percent)
     CONSTRAIN_PROFS = random.sample(profs, NUM_CONSTRAIN_PROFS)
@@ -490,13 +509,13 @@ def tighten_prof_free_time():
         row = []
         row.append(prof["id"])
         for day in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
-            option = "T"
-            roll = random.random()
-            if roll > 0.5:
-                option = "T"
-            elif roll > 0.3 and roll <= 0.5:
-                option = "F"
-            elif roll >= 0 and roll <= 0.3:
+            options = ["T", "F", "range"]
+            weight_T = config["later_constraints"]["prof_free_time"]["prof_T"]
+            weight_F = config["later_constraints"]["prof_free_time"]["prof_F"]
+            weight_R = config["later_constraints"]["prof_free_time"]["prof_range"]
+            weights  = [weight_T, weight_F, weight_R]
+            option = random.choices(options, weights, k=1)[0]
+            if option == "range":
                 option = get_constraint_range()
             row.append(option)
 
@@ -521,7 +540,7 @@ def tighten_room_capacity():
         rooms = json.load(f)["classrooms"]
 
     NUM_ROOMS = len(rooms)
-    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    constrain_distribution = config["later_constraints"]["room_capacity"]["possible_num_rooms"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
     CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
@@ -530,7 +549,7 @@ def tighten_room_capacity():
     for i,room in enumerate(rooms):
         if room["id"] not in CONSTRAIN_ROOMS_IDS:
             continue
-        capacity_reduce_distr = [0.05, 0.08, 0.1, 0.12, 0.15]
+        capacity_reduce_distr = config["later_constraints"]["room_capacity"]["possible_capacity_reduce_by"]
         percent = random.choice(capacity_reduce_distr)
         reduce_by = math.ceil(int(room["capacity"]) * percent)
         new_capacity = int(room["capacity"]) - reduce_by
@@ -549,7 +568,7 @@ def tighten_room_computers():
         computer_rooms = [room for room in rooms if room["has_computers"]=="1"]
 
     NUM_COMPUTER_ROOMS = len(computer_rooms)
-    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    constrain_distribution = config["later_constraints"]["room_computers"]["possible_num_rooms"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_ROOMS = math.ceil(NUM_COMPUTER_ROOMS * percent)
     CONSTRAIN_ROOMS = random.sample(computer_rooms, NUM_CONSTRAIN_ROOMS)
@@ -573,11 +592,11 @@ def tighten_num_rooms():
     with open("generate_input/jsons/classroom_available.json", "r") as f:
         room_available = json.load(f)["classroom_available"]
 
-    with open("generate_rasps/jsons/rasps.json", "r") as f:
+    with open("generate_input/jsons/rasps.json", "r") as f:
         rasps = json.load(f)["rasps"]
 
     NUM_ROOMS = len(rooms)
-    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    constrain_distribution = config["later_constraints"]["remove_rooms"]["possible_num_rooms"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_ROOMS = math.ceil(NUM_ROOMS * percent)
     CONSTRAIN_ROOMS = random.sample(rooms, NUM_CONSTRAIN_ROOMS)
@@ -611,7 +630,7 @@ def tighten_semesters_per_subject():
         semesters = json.load(f)["semesters"]
 
     NUM_SUBJECTS = len(subjects)
-    constrain_distribution = [0.01, 0.02, 0.03]
+    constrain_distribution = config["later_constraints"]["semesters_per_subject"]["possible_num_subjects"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_SUBS = math.ceil(NUM_SUBJECTS * percent)
     CONSTRAIN_SUBS = random.sample(subjects, NUM_CONSTRAIN_SUBS)
@@ -620,12 +639,18 @@ def tighten_semesters_per_subject():
     for i,subject in enumerate(subjects):
         if subject["id"] not in CONSTRAIN_SUBS_IDS:
             continue
-        how_many_semesters = random.choice([1,2,3])
+        options = config["later_constraints"]["semesters_per_subject"]["possible_num_semester_increase"]
+        how_many_semesters = random.choice(options)
         for _ in range(how_many_semesters):
             semester = random.choice(semesters)
             if semester["id"] not in subject["mandatory_in_semester_ids"] and \
                semester["id"] not in subject["optional_in_semester_ids"]:
-                   mandatory = True if random.random() > 0.5 else False
+                   options = ["mandatory", "optional"]
+                   weight_M = config["later_constraints"]["semesters_per_subject"]["subject_mandatory_in_semester"]
+                   weight_O = config["later_constraints"]["semesters_per_subject"]["subject_optional_in_semester"]
+                   weights = [weight_M, weight_O]
+                   option = random.choices(options, weights, k=1)[0]
+                   mandatory = True if option == "mandatory" else False
                    if mandatory:
                        subject["mandatory_in_semester_ids"].append(semester["id"])
                    else:
@@ -642,7 +667,7 @@ def tighten_students_per_semester():
         semesters = json.load(f)["semesters"]
 
     NUM_SEMESTERS = len(semesters)
-    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    constrain_distribution = config["later_constraints"]["num_students_per_semester"]["possible_num_semester"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_SEMS = math.ceil(NUM_SEMESTERS * percent)
     CONSTRAIN_SEMESTERS = random.sample(semesters, NUM_CONSTRAIN_SEMS)
@@ -651,7 +676,7 @@ def tighten_students_per_semester():
     for i,semester in enumerate(semesters):
         if semester["id"] not in CONSTRAIN_SEM_IDS:
             continue
-        numstudents_reduce_distr = [0.05, 0.08, 0.1, 0.12, 0.15]
+        numstudents_reduce_distr = config["later_constraints"]["num_students_per_semester"]["possible_num_students_reduce_by"]
         percent = random.choice(numstudents_reduce_distr)
         reduce_by = math.ceil(int(semester["num_students"]) * percent)
         new_num_students = int(semester["num_students"]) + reduce_by
@@ -669,7 +694,7 @@ def tighten_rasp_needs_computers():
         computer_rasps = [rasp for rasp in rasps if rasp["needs_computers"] == "0"]
 
     NUM_COMPUTER_RASPS = len(computer_rasps)
-    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    constrain_distribution = config["later_constraints"]["rasp_needs_computer"]["possible_num_rasps"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_RASPS = math.ceil(NUM_COMPUTER_RASPS * percent)
     CONSTRAIN_RASPS = random.sample(computer_rasps, NUM_CONSTRAIN_RASPS)
@@ -692,7 +717,7 @@ def tighten_rasp_random_dtstart_weekday():
         no_rnd_dt_rasps = [rasp for rasp in rasps if rasp["random_dtstart_weekday"] == "1"]
 
     NUM_NODT_RASPS = len(no_rnd_dt_rasps)
-    constrain_distribution = [0.01, 0.02, 0.03, 0.04, 0.05]
+    constrain_distribution = config["later_constraints"]["rasp_random_dtstart_weekday"]["possible_num_rasps"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_RASPS = math.ceil(NUM_NODT_RASPS * percent)
     CONSTRAIN_RASPS = random.sample(no_rnd_dt_rasps, NUM_CONSTRAIN_RASPS)
@@ -717,13 +742,15 @@ def tighten_rasp_fix_at_room_id():
         classrooms = json.load(f)["classrooms"]
 
     NUM_RASPS = len(rasps)
-    constrain_distribution = [0.01, 0.02, 0.03]
+    constrain_distribution = config["later_constraints"]["rasp_fix_at_room_id"]["possible_num_rasps"]
     percent = random.choice(constrain_distribution)
     NUM_CONSTRAIN_RASPS = math.ceil(NUM_RASPS * percent)
     CONSTRAIN_RASPS = random.sample(rasps, NUM_CONSTRAIN_RASPS)
     CONSTRAIN_RASPS_IDS = set(rasp["id"] for rasp in CONSTRAIN_RASPS)
 
-    room_pool = random.sample(classrooms, 5)
+    target_len_pool = config["later_constraints"]["rasp_fix_at_room_id"]["num_room_pool"]
+    len_pool = target_len_pool if target_len_pool <= len(classrooms) else len(classrooms)
+    room_pool = random.sample(classrooms, len_pool)
     room_pool = sorted(room_pool, key=lambda x: (int(x["capacity"]), int(x["has_computers"])), reverse=True)
 
     for rasp in rasps:
@@ -742,7 +769,22 @@ def tighten_a_constraint():
                        "num_rooms", "num_semesters_per_subject", "num_students_per_semester",
                        "rasp_needs_computer", "rasp_random_dtstart_weekday", "rasp_fix_at_room_id"]
 
-    tighten_what = random.choice(tighten_options)
+    weight_room_free_time = config["later_constraints"]["constrain_what"]["room_free_time"]
+    weight_prof_free_time = config["later_constraints"]["constrain_what"]["prof_free_time"]
+    weight_capacity       = config["later_constraints"]["constrain_what"]["room_capacity"]
+    weight_pc             = config["later_constraints"]["constrain_what"]["room_pc"]
+    weight_num_rooms      = config["later_constraints"]["constrain_what"]["num_rooms"]
+    weight_sem_per_sub    = config["later_constraints"]["constrain_what"]["num_semesters_per_subject"]
+    weight_stu_per_sem    = config["later_constraints"]["constrain_what"]["num_students_per_semester"]
+    weight_rasp_pc        = config["later_constraints"]["constrain_what"]["rasp_needs_computer"]
+    weight_rasp_dtwday    = config["later_constraints"]["constrain_what"]["rasp_random_dtstart_weekday"]
+    weight_rasp_fix_room  = config["later_constraints"]["constrain_what"]["rasp_fix_at_room_id"]
+
+    weights = [weight_room_free_time, weight_prof_free_time, weight_capacity,
+               weight_pc, weight_num_rooms, weight_sem_per_sub, weight_stu_per_sem,
+               weight_rasp_pc, weight_rasp_dtwday, weight_rasp_fix_room]
+
+    tighten_what = random.choices(tighten_options, weights, k=1)[0]
 
     if tighten_what == "room_free_time":
         tighten_room_free_time()
@@ -766,8 +808,8 @@ def tighten_a_constraint():
         tighten_rasp_fix_at_room_id()
 
 
-#TODO: Add fixed hours to some of the rrules
-def generate_input(NUM_RASPS: int):
+def generate_input():
+    NUM_RASPS = config["NUM_RASPS"]
     rasps, professors = generate_rasps(NUM_RASPS)
     semesters_dict = generate_semesters(NUM_RASPS)
     subjects_dict  = generate_subjects(rasps, semesters_dict)
@@ -776,4 +818,17 @@ def generate_input(NUM_RASPS: int):
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
 
-generate_input(100)
+    tighten_a_constraint()
+    tighten_room_free_time()
+    tighten_prof_free_time()
+    tighten_room_capacity()
+    tighten_room_computers()
+    tighten_num_rooms()
+    tighten_semesters_per_subject()
+    tighten_students_per_semester()
+    tighten_rasp_needs_computers()
+    tighten_rasp_random_dtstart_weekday()
+    tighten_rasp_fix_at_room_id()
+
+generate_input()
+

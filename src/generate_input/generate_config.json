@@ -1,0 +1,106 @@
+{
+    "NUM_RASPS": 100,
+
+    "initial_input": {
+        "rasps":{
+
+            "type_PV": 0.9,
+            "type_PVS": 0.1,
+
+            "group_1": 0.94,
+            "group_2": 0.02,
+            "group_3": 0.02,
+            "group_4": 0.02,
+
+            "duration_2": 0.94,
+            "duration_1": 0.02,
+            "duration_3": 0.02,
+            "duration_4": 0.02,
+
+            "needs_computers": 0.5,
+            "not_needs_computers": 0.5,
+
+            "NORMAL_WEEKLY_rrule": 0.79,
+            "SPECIAL_WEEKLY_rrule": 0.05,
+            "DAILY_rrule": 0.15,
+            "MONTHLY_rrule": 0.01,
+
+            "random_dtstart": 0.8,
+            "not_random_dtstart": 0.2,
+
+            "possible_prof_to_rasp_ratios": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        },
+        "semesters": {
+            "possible_sem_to_rasp_ratios": [0.05, 0.08, 0.1, 0.15, 0.2],
+            "num_students_high_interval": [90,120],
+            "num_students_low_interval": [45,65],
+            "num_students_high_probability": 0.2,
+            "num_students_low_probability": 0.8
+        },
+        "subjects": {
+            "mandatory": 0.6,
+            "optional": 0.4
+        },
+        "rooms": {
+            "possible_room_to_rasp_ratios": [0.1, 0.12, 0.15, 0.16, 0.17, 0.18, 0.22, 0.3],
+            "possible_computer_room_percentages": [0.2, 0.3, 0.35, 0.4, 0.5]
+        }
+    },
+
+    "later_constraints": {
+        "constrain_what": {
+            "room_free_time": 0.1,
+            "prof_free_time": 0.1,
+            "room_capacity": 0.1,
+            "room_pc": 0.1,
+            "num_rooms": 0.1,
+            "num_semesters_per_subject": 0.1,
+            "num_students_per_semester": 0.1,
+            "rasp_needs_computer": 0.1,
+            "rasp_random_dtstart_weekday": 0.1,
+            "rasp_fix_at_room_id": 0.1
+        },
+        "room_free_time": {
+            "possible_num_rooms": [0.05, 0.1, 0.2, 0.3, 0.4],
+            "room_T": 0.5,
+            "room_F": 0.2,
+            "room_range": 0.3
+        },
+        "prof_free_time": {
+            "possible_num_profs": [0.05, 0.1, 0.2, 0.3, 0.4],
+            "prof_T": 0.5,
+            "prof_F": 0.2,
+            "prof_range": 0.3
+        },
+        "room_capacity": {
+            "possible_num_rooms": [0.01, 0.02, 0.03, 0.04, 0.05],
+            "possible_capacity_reduce_by": [0.05, 0.08, 0.1, 0.12, 0.15]
+        },
+        "room_computers": {
+            "possible_num_rooms": [0.01, 0.02, 0.03, 0.04, 0.05]
+        },
+        "remove_rooms": {
+            "possible_num_rooms": [0.01, 0.02, 0.03, 0.04, 0.05]
+        },
+        "semesters_per_subject": {
+            "possible_num_subjects": [0.01, 0.02, 0.03],
+            "possible_num_semester_increase": [1,2,3],
+            "subject_mandatory_in_semester": 0.5,
+            "subject_optional_in_semester": 0.5
+        },
+        "num_students_per_semester": {
+            "possible_num_semester": [0.01, 0.02, 0.03, 0.04, 0.05],
+            "possible_num_students_reduce_by": [0.05, 0.08, 0.1, 0.12, 0.15]
+        },
+        "rasp_needs_computer": {
+            "possible_num_rasps": [0.01, 0.02, 0.03, 0.04, 0.05]
+        },
+        "rasp_random_dtstart_weekday": {
+            "possible_num_rasps": [0.01, 0.02, 0.03, 0.04, 0.05]
+        },
+        "rasp_fix_at_room_id": {
+            "possible_num_rasps": [0.01, 0.02, 0.03],
+            "num_room_pool": 5
+        }
+    }
+}
