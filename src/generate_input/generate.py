@@ -588,6 +588,8 @@ def tighten_room_computers():
 def tighten_num_rooms():
     with open("generate_input/jsons/classrooms.json", "r") as f:
         rooms = json.load(f)["classrooms"]
+        if len(rooms) == 1:
+            return
 
     with open("generate_input/jsons/classroom_available.json", "r") as f:
         room_available = json.load(f)["classroom_available"]
@@ -818,17 +820,7 @@ def generate_input():
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
 
-    tighten_a_constraint()
-    tighten_room_free_time()
-    tighten_prof_free_time()
-    tighten_room_capacity()
-    tighten_room_computers()
-    tighten_num_rooms()
-    tighten_semesters_per_subject()
-    tighten_students_per_semester()
-    tighten_rasp_needs_computers()
-    tighten_rasp_random_dtstart_weekday()
-    tighten_rasp_fix_at_room_id()
+    #tighten_a_constraint()
 
 generate_input()
 
