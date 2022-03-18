@@ -28,6 +28,12 @@ def timetable_properly_taxed(state):
     rooms             = state.rooms
     students_per_rasp = state.students_per_rasp
     rasps             = timetable.keys()
+    room_grade        = state.grades["all"]["roomScore"]
+    prof_grade        = state.grades["all"]["professorScore"]
+    nast_grade        = state.grades["all"]["nastScore"]
+    capa_grade        = state.grades["all"]["capacityScore"]
+    comp_grade        = state.grades["all"]["computerScore"]
+    total_grade       = state.grades["all"]["totalScore"]
 
     init_rooms_occupied     = {k:v.copy() for k,v in state.initial_constraints.rooms_occupied.items()}
     init_profs_occupied     = {k:v.copy() for k,v in state.initial_constraints.profs_occupied.items()}
@@ -51,11 +57,11 @@ def timetable_properly_taxed(state):
         tax_tool.tax_all_constraints(test_state, slot, rasp)
 
     for rasp, slot in timetable.items():
-        if rooms[slot.room_id].capacity < students_per_rasp[rasp.id]:
+        if capa_grade == 0 and rooms[slot.room_id].capacity < students_per_rasp[rasp.id]:
             print(f"{rasp.id} has a capacity problem at {slot}.")
-        if not rooms[slot.room_id].has_computers and rasp.needs_computers:
+        if comp_grade == 0 and not rooms[slot.room_id].has_computers and rasp.needs_computers:
             print(f"{rasp.id} has a strong computer problem at {slot}.")
-        if rooms[slot.room_id].has_computers and not rasp.needs_computers:
+        if comp_grade == 0 and rooms[slot.room_id].has_computers and not rasp.needs_computers:
             print(f"{rasp.id} has a weak computer problem at {slot}.")
 
     given_rooms_occupied = state.mutable_constraints.rooms_occupied
@@ -64,7 +70,7 @@ def timetable_properly_taxed(state):
         for week in range(NUM_WEEKS):
             for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
-                    if calc_rooms_occupied[room_id][week, day, hour] > 1:
+                    if room_grade == 0 and calc_rooms_occupied[room_id][week, day, hour] > 1:
                         print(f"ROOMS: {room_id} has a collision problem at ({week}, {day}, {hour}).")
                     if calc_rooms_occupied[room_id][week, day, hour] != given_rooms_occupied[room_id][week, day, hour]:
                         print(f"{room_id} is not the same in given and calculated 'rooms_occupied' at {week}, {day}, {hour}).")
@@ -78,7 +84,7 @@ def timetable_properly_taxed(state):
         for week in range(NUM_WEEKS):
             for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
-                    if calc_profs_occupied[prof_id][week, day, hour] > 1:
+                    if prof_grade == 0 and calc_profs_occupied[prof_id][week, day, hour] > 1:
                         print(f"PROFS: {prof_id} has a collision problem at ({week}, {day}, {hour}).")
                     if calc_profs_occupied[prof_id][week, day, hour] != given_profs_occupied[prof_id][week, day, hour]:
                         print(f"{prof_id} is not the same in given and calculated 'profs_occupied' at {week}, {day}, {hour}).")
@@ -92,12 +98,16 @@ def timetable_properly_taxed(state):
         for week in range(NUM_WEEKS):
             for day in range(NUM_DAYS):
                 for hour in range(NUM_HOURS):
-                    if calc_nasts_occupied[sem_id][week, day, hour] > 1:
+                    if nast_grade == 0 and calc_nasts_occupied[sem_id][week, day, hour] > 1:
                         print(f"NASTS: {sem_id} has a collision problem at ({week}, {day}, {hour}).")
                     if calc_nasts_occupied[sem_id][week, day, hour] != given_nasts_occupied[sem_id][week, day, hour]:
                         print(f"{sem_id} is not the same in given and calculated 'nasts_occupied' at {week}, {day}, {hour}).")
                         print(f"calculated is: ", calc_nasts_occupied[sem_id][week, day, hour])
                         print(f"given is: ", given_nasts_occupied[sem_id][week, day, hour])
+
+    if nast_grade == 0:
+        no_mandatory_optional_collisions(state)
+        no_subject_type_collisions(state)
 
 
 """
@@ -280,7 +290,5 @@ def correct_rrules(state):
 
 all_rasps_have_dates(state)
 all_dates_correct_start(state)
-timetable_properly_taxed(state)
-no_mandatory_optional_collisions(state)
-no_subject_type_collisions(state)
 correct_rrules(state)
+timetable_properly_taxed(state)

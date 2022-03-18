@@ -243,7 +243,8 @@ def init_rrule_objects(rasps, time_structure):
         dtstart, until = all_dates[0] + (-1,), all_dates[-1] + (-1,) #-1 coz we need the hour
         rasp_rrules[rasp.id] = {"DTSTART": dtstart, "UNTIL": until, "FREQ": freqs[rrule_obj._freq],
                                 "all_dates":[], "dtstart_weekdays": dtstart_weekdays,
-                                "possible_all_dates_idx": rrule_space.index(rrule_enumeration)}
+                                "possible_all_dates_idx": rrule_space.index(rrule_enumeration),
+                                "rasp_duration": rasp.duration}
 
     return rasp_rrules, rrule_space
 
