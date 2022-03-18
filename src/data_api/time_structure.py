@@ -179,22 +179,7 @@ def get_rrule_dates(rasp_rrule, NEW_DTSTART, NEW_UNTIL, hour_to_index):
     new_until_str   = NEW_UNTIL.strftime("%Y%m%dT%H%M%S")
     rasp_rrule = rasp_rrule.replace(old_dtstart_str, new_dtstart_str)
     rasp_rrule = rasp_rrule.replace(old_until_str, new_until_str)
-
-    rasp_rrule = rrulestr(rasp_rrule)
-    freq = rasp_rrule._freq
-    interval = rasp_rrule._interval
-    wkst = rasp_rrule._wkst
-    bymonth = rasp_rrule._bymonth
-    bymonthday = rasp_rrule._bymonthday
-    byyearday = rasp_rrule._byyearday
-    byweekno = rasp_rrule._byweekno
-    byweekday = rasp_rrule._byweekday
-
-    rasp_dates = rrule(dtstart = NEW_DTSTART, until = NEW_UNTIL,
-                       freq = freq, interval = interval, wkst = wkst,
-                       bymonth = bymonth, bymonthday = bymonthday,
-                       byyearday = byyearday, byweekno = byweekno,
-                       byweekday = byweekday)
+    rasp_dates = rrulestr(rasp_rrule)
 
     rasp_dates = tuple(date_to_index(date, hour_to_index) for date in rasp_dates)
     return rasp_dates
@@ -229,6 +214,7 @@ def init_rrule_objects(rasps, time_structure):
         if rasp.random_dtstart_weekday:
             for dtstart_weekday in dtstart_weekdays:
                 all_dates = list(get_rrule_dates(rasp.rrule, dtstart_weekday, until, hour_to_index))
+
                 #given_week, given_day, _ = date_to_index(dtstart_weekday, hour_to_index)
                 given_week, given_day = all_dates[0][0], all_dates[0][1]
                 key = (given_week, given_day)

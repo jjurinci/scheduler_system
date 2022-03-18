@@ -74,7 +74,7 @@ def get_one_rrule(rrules_pool):
 
 
 def get_types():
-    options = [["P,V"], ["P", "V", "S"]]
+    options = [["P","V"], ["P", "V", "S"]]
     weight_PV  = config["initial_input"]["rasps"]["type_PV"]
     weight_PVS = config["initial_input"]["rasps"]["type_PVS"]
     weights = [weight_PV, weight_PVS]

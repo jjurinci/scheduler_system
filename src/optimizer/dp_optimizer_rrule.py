@@ -13,11 +13,10 @@ is taken.
 """
 def set_random_timetable(state: State):
     print("Generating random timetable.")
-    NUM_HOURS = state.time_structure.NUM_HOURS
     timetable = state.timetable
 
     # Generating a random timetable
-    for rasp in timetable:
+    for rasp, _ in tqdm(timetable.items()):
         slot = None
         pool = rasp_slots.get_rasp_slots(state, rasp)
         slot = random.choice(tuple(pool))
