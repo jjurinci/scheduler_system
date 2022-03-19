@@ -7,10 +7,11 @@ from utilities.general_utilities import load_state
 """
 String representation of a rasp that will be shown in timetable.
 """
-def show_object_str(show_object):
+def show_object_str(show_object, by_sem_id):
     rasp, room_id = show_object["rasp"], show_object["room_id"]
     rasp_repr = str(rasp.subject_id) + str(rasp.type) + str(rasp.group)
-    return f"{rasp_repr} {room_id} {rasp.professor_id}"
+    optional = "*" if by_sem_id in rasp.optional_in_semester_ids else ""
+    return f"{rasp_repr}{optional} {room_id} {rasp.professor_id}"
 
 
 """
@@ -43,7 +44,7 @@ def get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id="", by_room_id=
                                              by_sem_id in obj["rasp"].optional_in_semester_ids]
 
             for show_object in week_matrix[day, hour]:
-                obj_str = show_object_str(show_object)
+                obj_str = show_object_str(show_object, by_sem_id)
                 for hr in range(hour, hour+show_object["rasp"].duration):
                     print_table[hr, day+1].append(obj_str)
 
