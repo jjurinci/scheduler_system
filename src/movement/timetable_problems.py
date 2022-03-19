@@ -17,7 +17,7 @@ def analyze_timetable():
     for rasp, slot in timetable.items():
         room_id, _, _, _ = slot
         for week, day, hour in rasp_rrules[rasp.id]["all_dates"]:
-            for hr in range(hour + rasp.duration):
+            for hr in range(hour,hour + rasp.duration):
                 if rooms_occupied[room_id][week, day, hr] > 1:
                     print(f"{rasp.id} has a room collision at {room_id} {week},{day},{hr}")
                 if profs_occupied[rasp.professor_id][week, day, hr] > 1:
