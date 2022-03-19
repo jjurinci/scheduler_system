@@ -87,10 +87,13 @@ def tax_rrule_in_nasts_optional(state, sem_id, rasp):
     nast_occupied = state.mutable_constraints.nasts_occupied[sem_id]
     optional_occupied = state.mutable_constraints.optionals_occupied[sem_id]
     other_groups_dates = cons_api.get_other_groups_all_dates(state, rasp)
+    own_group_dates = cons_api.get_own_groups_all_dates(state, rasp)
 
     for week, day, hour in all_dates:
         cnt = 0
         for hr in range(hour, hour + rasp.duration):
+            if (week, day, hr) in own_group_dates:
+                continue
             if optional_occupied[week, day, hr] == 0 or (week, day, hr) in other_groups_dates:
                 nast_occupied[week, day, hr] += 1
                 cnt += np.sum(nast_occupied[week, day, hr]>1)
@@ -109,10 +112,13 @@ def untax_rrule_in_nasts_optional(state, sem_id, rasp):
     nast_occupied = state.mutable_constraints.nasts_occupied[sem_id]
     optionals_occupied = state.mutable_constraints.optionals_occupied[sem_id]
     other_groups_dates = cons_api.get_other_groups_all_dates(state, rasp)
+    own_group_dates = cons_api.get_own_groups_all_dates(state, rasp)
 
     for week, day, hour in all_dates:
         cnt = 0
         for hr in range(hour, hour + rasp.duration):
+            if (week, day, hr) in own_group_dates:
+                continue
             if optionals_occupied[week, day, hr] == 1 or (week, day, hr) in other_groups_dates:
                 cnt += np.sum(nast_occupied[week, day, hr]>1)
                 nast_occupied[week, day, hr] -= 1
