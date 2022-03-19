@@ -1,7 +1,7 @@
 import numpy as np
 from tabulate import tabulate
 import datetime
-from utilities.general_utilities import load_state
+from utilities.general_utilities import load_state, load_population
 
 
 """
@@ -57,8 +57,8 @@ Prints the timetable in stdout.
 - by rooms, by profs, and by semesters
 Can be redirected to a .txt file.
 """
-def print_timetable():
-    state = load_state()
+def print_timetable(genetic=False):
+    state = load_population()[0] if genetic else load_state()
     timetable = state.timetable
     rasp_rrules = state.rasp_rrules
     rasps = timetable.keys()
@@ -115,4 +115,4 @@ def print_timetable():
             print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
             print("")
 
-print_timetable()
+print_timetable(genetic = True)
