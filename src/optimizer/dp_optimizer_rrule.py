@@ -72,7 +72,6 @@ Transformation function:
 """
 def find_better_grade(state: State, unsuccessful_rasps: set):
     timetable   = state.timetable
-    rasp_rrules = state.rasp_rrules
     grades      = state.grades
 
     # Pick a random problematic rasp
@@ -98,7 +97,6 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
 
     old_slot = timetable[rasp0]
     old_grade_with_old_slot = grades["all"].copy()
-    old_rrules = rasp_rrules[rasp0.id].copy()
     timetable.pop(rasp0, 0)
     pool = rasp_slots.get_rasp_slots(state, rasp0)
 
@@ -108,8 +106,6 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     pure_old_slot_grade = {k:old_grade_with_old_slot[k] -
                              old_grade_without_old_slot[k]
                            for k in old_grade_with_old_slot}
-
-    #assert all(x<=0 for x in pure_old_slot_grade.values())
 
     need_same_score   = pure_old_slot_grade["totalScore"] == 0
     need_better_score = pure_old_slot_grade["totalScore"] != 0
@@ -127,9 +123,6 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
             continue
         cnt += 1
 
-        #print(rasp0, new_slot)
-        #print(rasp_rrules[rasp0.id])
-        #print(state.rrule_space[rasp_rrules[rasp0.id]["possible_all_dates_idx"]])
         rasp_slots.update_rasp_rrules(state, new_slot, rasp0)
 
         pure_new_slot_grade = grade_tool.count_all_collisions(state, new_slot, rasp0)
@@ -157,7 +150,7 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     if not the_slot:
         unsuccessful_rasps.add(rasp0.id)
         timetable[rasp0] = old_slot
-        rasp_rrules[rasp0.id] = old_rrules
+        rasp_slots.update_rasp_rrules(state, old_slot, rasp0)
         tax_tool.tax_all_constraints(state, old_slot, rasp0)
         return False
     else:
@@ -165,6 +158,5 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
 
     tax_tool.tax_all_constraints(state, the_slot, rasp0)
 
-    #assert(grades["all"][k]<=0 and grades["all"][k] == new_grade_with_new_slot[k] for k in grades["all"])
     timetable[rasp0] = the_slot
     return False
