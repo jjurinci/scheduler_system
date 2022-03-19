@@ -51,24 +51,26 @@ def request_solver():
             state = State(is_winter, semesters, time_structure, rooms, students_per_rasp,
                           initial_constraints, mutable_constraints,
                           timetable, grades, rasp_rrules, rrule_space,
-                          groups, subject_types)
+                          groups, subject_types, set())
 
             optimizer.iterate(state, 100000)
+            state.unsuccessful_rasps.clear()
 
             if state.grades["all"]["totalScore"] != 0:
+                save_timetable_to_file(state, "saved_timetables/one_state.pickle")
+                break
                 #print(state.grades)
                 bads += 1
 
             if state.grades["all"]["totalScore"] == 0:
                 goods += 1
-                save_timetable_to_file(state, "saved_timetables/zero_timetable.pickle")
+                save_timetable_to_file(state, "saved_timetables/one_state.pickle")
                 break
 
         except KeyboardInterrupt:
-            save_timetable_to_file(state, "saved_timetables/stopped_timetable.pickle")
             break
 
-        save_timetable_to_file(state, "saved_timetables/errors_timetable.pickle")
+        save_timetable_to_file(state, "saved_timetables/one_state.pickle")
         print(f"{goods=} {bads=}")
 
 request_solver()

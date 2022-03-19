@@ -35,10 +35,9 @@ def iterate(state, iterations=1000):
     BEST_GRADE = state.grades["all"].copy()
     print(0, BEST_GRADE)
 
-    unsuccessful_rasps = set()
     for iteration in tqdm(range(iterations)):
         #print("STATE: ", get_size(state) / 10**6, "MB.")
-        converged = find_better_grade(state, unsuccessful_rasps)
+        converged = find_better_grade(state)
 
         if state.grades["all"]["totalScore"] > BEST_GRADE["totalScore"]:
             BEST_GRADE = state.grades["all"].copy()
@@ -70,7 +69,7 @@ Transformation function:
        "Converged" means that either all rasps have been scheduled with no collisions,
        OR rasps have been scheduled with collisions but no further improvement could be found.
 """
-def find_better_grade(state: State, unsuccessful_rasps: set):
+def find_better_grade(state: State):
     timetable   = state.timetable
     grades      = state.grades
 
@@ -80,7 +79,7 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     rasp0 = None
     first_iters, skipped_iters = 0, 0
     for rasp in rasps:
-        if rasp.id in unsuccessful_rasps:
+        if rasp.id in state.unsuccessful_rasps:
             skipped_iters += 1
             continue
         first_iters += 1
@@ -148,13 +147,13 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     print("ITERS: ", cnt, rasp0.id, "SKIPPED: ", skipped)
 
     if not the_slot:
-        unsuccessful_rasps.add(rasp0.id)
+        state.unsuccessful_rasps.add(rasp0.id)
         timetable[rasp0] = old_slot
         rasp_slots.update_rasp_rrules(state, old_slot, rasp0)
         tax_tool.tax_all_constraints(state, old_slot, rasp0)
         return False
     else:
-        unsuccessful_rasps = set()
+        state.unsuccessful_rasps.clear()
 
     tax_tool.tax_all_constraints(state, the_slot, rasp0)
 

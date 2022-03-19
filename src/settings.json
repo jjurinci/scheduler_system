@@ -19,7 +19,8 @@
     "path_startendyear_json": "generate_input/jsons/common/start_end_year.json",
     "path_daystructure_json": "generate_input/jsons/common/day_structure.json",
 
-    "path_state": "saved_timetables/errors_timetable.pickle",
+    "path_state": "saved_timetables/one_state.pickle",
+    "path_population": "saved_timetables/population.pickle",
 
     "path_faculties_csv": "",
     "path_studyprogrammes_csv": "",
