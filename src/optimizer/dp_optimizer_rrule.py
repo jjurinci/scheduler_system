@@ -88,7 +88,7 @@ def find_better_grade(state: State):
             rasp0 = rasp
             break
 
-    print("FIRST ITERS: ", first_iters, skipped_iters)
+    #print("FIRST ITERS: ", first_iters, skipped_iters)
 
     if not rasp0:
         print("NO PROBLEMATIC RASPS.")
@@ -144,7 +144,7 @@ def find_better_grade(state: State):
         elif need_same_score:
             why_fail.failure_reason_rigorous(state, action, new_slot, rasp0, pure_new_slot_grade)
 
-    print("ITERS: ", cnt, rasp0.id, "SKIPPED: ", skipped)
+    #print("ITERS: ", cnt, rasp0.id, "SKIPPED: ", skipped)
 
     if not the_slot:
         state.unsuccessful_rasps.add(rasp0.id)

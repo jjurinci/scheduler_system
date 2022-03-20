@@ -9,6 +9,7 @@ import optimizer.grade_tool    as grade_tool
 import optimizer.genetic_optimizer_rrule as optimizer
 from utilities.my_types import State
 from utilities.general_utilities import get_size
+from tqdm import tqdm
 import copy
 
 """
@@ -54,8 +55,8 @@ def request_solver():
 
     POPULATION_SIZE = 20
     population = []
-    for pop in range(POPULATION_SIZE):
-        print(f"Generating population {pop}")
+    print(f"Generating populations")
+    for _ in tqdm(range(POPULATION_SIZE)):
         new_state = copy.deepcopy(state)
         population.append((False, new_state)) #(converged, state)
 

@@ -38,11 +38,14 @@ def iterate(population, iterations=1000):
     print(0, BEST_GRADE)
 
     for generation in tqdm(range(iterations)):
-        with Pool(7) as p:
-            mutations = p.map(find_better_grade, population)
+        #with Pool(7) as p:
+        #    mutations = p.map_async(find_better_grade, population)
+        #    mutations.wait()
 
-        population += mutations
-        population.sort(key=lambda x: x[1].grades["all"]["totalScore"], reverse=True)
+        mutations = [find_better_grade(pop) for pop in population]
+
+        population += mutations #mutations.get()
+        population.sort(key=lambda x: (x[1].grades["all"]["totalScore"], x[0]), reverse=True)
         population = population[:population_cap]
 
         calc_grade = population[0][1].grades["all"]
@@ -101,10 +104,7 @@ def find_better_grade(data):
             rasp0 = rasp
             break
 
-    #print("FIRST ITERS: ", first_iters, skipped_iters)
-
     if not rasp0:
-        print("NO PROBLEMATIC RASPS.")
         return (True, state)
 
     old_slot = timetable[rasp0]
@@ -156,8 +156,6 @@ def find_better_grade(data):
             break
         elif need_same_score:
             why_fail.failure_reason_rigorous(state, action, new_slot, rasp0, pure_new_slot_grade)
-
-    #print("ITERS: ", cnt, rasp0.id, "SKIPPED: ", skipped)
 
     if not the_slot:
         state.unsuccessful_rasps.add(rasp0.id)
