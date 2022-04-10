@@ -1,0 +1,77 @@
+id,name,mandatory_in_semester_ids,optional_in_semester_ids
+arhorg,Arhitektura organizacije,fipu_inf_pred_info_sem1,
+eng1,Engleski jezik 1,fipu_inf_pred_info_sem1,
+mat1,Matematika 1,fipu_inf_pred_info_sem1,
+oikt,Osnove IKT,fipu_inf_pred_info_sem1,
+progr,Programiranje,fipu_inf_pred_info_sem1,
+baze1,Baze podataka 1,fipu_inf_pred_info_sem2,
+mat2,Matematika 2,fipu_inf_pred_info_sem2,
+multimedsus,Multimedijalni sustavi,fipu_inf_pred_info_sem2,
+pis,Poslovni informacijski sustavi,fipu_inf_pred_info_sem2,
+spa,Strukture podataka i algoritmi,fipu_inf_pred_info_sem2,
+baze2,Baze podataka 2,fipu_inf_pred_info_sem3,
+oper_sus,Operacijski sustavi,fipu_inf_pred_info_sem3,
+racmreze,Računalne mreže,fipu_inf_pred_info_sem3,
+stat,Statistika,fipu_inf_pred_info_sem3,
+funkprog,Funkcijsko programiranje,,"fipu_inf_pred_info_sem3,fipu_inf_pred_info_sem5,fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3"
+iup,Informatizacija uredskog poslovanja,,"fipu_inf_pred_info_sem3,fipu_inf_pred_info_sem5,fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3"
+osnekon,Osnove ekonomije,,fipu_inf_pred_info_sem3
+racvirtokr,Računovodstvo u virtualnom okruženju,,"fipu_inf_pred_info_sem3,fipu_inf_pred_info_sem5,fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3"
+ntp,Napredne tehnike programiranja,fipu_inf_pred_info_sem4,
+proginz,Programsko inžinjerstvo,fipu_inf_pred_info_sem4,
+sigracsus,Sigurnost računalnih sustava,fipu_inf_pred_info_sem4,
+ai,Umjetna inteligencija,fipu_inf_pred_info_sem4,
+eng2,Engleski jezik 2,,fipu_inf_pred_info_sem4
+komorg,Komuniciranje u organizaciji,,"fipu_inf_pred_info_sem4,fipu_inf_pred_info_sem6,fipu_inf_dipl_info_sem2"
+qict,Kvaliteta u ICT,,"fipu_inf_pred_info_sem4,fipu_inf_pred_info_sem6,fipu_inf_dipl_info_sem2"
+racis,Računovodstveni informacijski sustavi,,"fipu_inf_pred_info_sem4,fipu_inf_pred_info_sem6,fipu_inf_dipl_info_sem2"
+knowsys,Sustavi temeljeni na znanju,,"fipu_inf_pred_info_sem4,fipu_inf_pred_info_sem6,fipu_inf_dipl_info_sem2"
+tinf,Teorija informacija,,"fipu_inf_pred_info_sem4,fipu_inf_pred_info_sem6,fipu_inf_dipl_info_sem2"
+upravis,Upravljački informacijski sustavi,,"fipu_inf_pred_info_sem4,fipu_inf_pred_info_sem6,fipu_inf_dipl_info_sem2"
+icovrac,Interakcija čovjeka i računala,fipu_inf_pred_info_sem5,
+operistr,Operacijska istraživanja,fipu_inf_pred_info_sem5,
+upravposproc,Upravljanje poslovnim procesima,fipu_inf_pred_info_sem5,
+webapp,Web aplikacije,fipu_inf_pred_info_sem5,
+modisim,Modeliranje i simulacije,fipu_inf_pred_info_sem6,
+praktikum,Praktikum,fipu_inf_pred_info_sem6,
+spi,Sustavi poslovne inteligencije,fipu_inf_pred_info_sem6,
+mlits,Matematička logika i teorija skupova,fipu_inf_dipl_info_sem1,
+primstat,Primijenjena statistika,fipu_inf_dipl_info_sem1,
+stp,Suvremene tehnike programiranja,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_nast_sem1",
+virtteh,Virtualizacijske tehnologije,fipu_inf_dipl_info_sem1,
+bchainapp,Blockchain aplikacije,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3"
+digmarktur,Digitalni marketing u turizmu,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3"
+ekonometrija,Ekonometrija,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3"
+gis,Geoinformacijski sustavi,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3"
+inzkompsus,Inžinjerstvo kompleksnih sustava,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3"
+hrmgmt,Management ljudskih potencijala,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3"
+racgrafika,Računalna grafika,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3"
+uprprojekti,Upravljanje projektima,,"fipu_inf_dipl_info_sem1,fipu_inf_dipl_info_sem3"
+dipri,Dizajn i programiranje računalnih igara,fipu_inf_dipl_info_sem2,
+mobapp,Mobilne aplikacije,fipu_inf_dipl_info_sem2,
+mrezteh,Mrežne tehnologije,fipu_inf_dipl_info_sem2,
+neuralnet,Neuronske mreže i duboko učenje,fipu_inf_dipl_info_sem2,
+forenzrac,Forenzičko računovodstvo,,fipu_inf_dipl_info_sem2
+iot,Internet stvari,,fipu_inf_dipl_info_sem2
+poskomeng,Poslovna komunikacija na engleskom jeziku,,fipu_inf_dipl_info_sem2
+robotika,Robotika,,fipu_inf_dipl_info_sem2
+eucenje,Sustavi elektroničkog učenja,,"fipu_inf_dipl_info_sem2,fipu_inf_dipl_info_nast_sem2"
+telematika,Telematika,,fipu_inf_dipl_info_sem2
+itmgmt,IT Management,"fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem1",
+iip,Izrada informatičkih projekata,fipu_inf_dipl_info_sem3,
+kriptog,Kriptografija,"fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3",
+nasp,Napredni algoritmi i strukture podataka,"fipu_inf_dipl_info_sem3,fipu_inf_dipl_info_nast_sem3",
+obrpos,Obrazovanje posebnih skupina,fipu_inf_dipl_info_nast_sem1,
+odgobr,Odgoj i obrazovanje za ljudska prava,fipu_inf_dipl_info_nast_sem1,
+opcapsih,Opća psihologija,fipu_inf_dipl_info_nast_sem1,
+por,Pedagogija održivog razvoja,fipu_inf_dipl_info_nast_sem1,
+metodika,Metodika nastave informatike,fipu_inf_dipl_info_nast_sem2,
+psihkom,Psihologija komuniciranja,fipu_inf_dipl_info_nast_sem2,
+psihpor,Psihologija poremećaja u djetinjstvu i adolescenciji,fipu_inf_dipl_info_nast_sem2,
+psihuce,Psihologija učenja i nastave,fipu_inf_dipl_info_nast_sem2,
+psihraz,Razvojna psihologija,fipu_inf_dipl_info_nast_sem2,
+uvoddidak,Uvod u didaktiku,fipu_inf_dipl_info_nast_sem2,
+uvodpedagog,Uvod u pedagogiju,fipu_inf_dipl_info_nast_sem2,
+iteduk,IT i edukacija,fipu_inf_dipl_info_nast_sem3,
+opcadidak,Opća didaktika,fipu_inf_dipl_info_nast_sem3,
+opcapedagog,Opća pedagogija,fipu_inf_dipl_info_nast_sem3,

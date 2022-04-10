@@ -115,4 +115,4 @@ def print_timetable(genetic=False):
             print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
             print("")
 
-print_timetable(genetic = True)
+print_timetable(genetic = False)

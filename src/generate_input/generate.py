@@ -820,7 +820,8 @@ def generate_input():
     create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
     create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict)
 
-    #tighten_a_constraint()
+    #for _ in range(100):
+    #    tighten_a_constraint()
 
 generate_input()
 

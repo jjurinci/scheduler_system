@@ -3,25 +3,24 @@
 
     "initial_input": {
         "rasps":{
+            "type_PV": 0.6,
+            "type_PVS": 0.4,
 
-            "type_PV": 0.9,
-            "type_PVS": 0.1,
+            "group_1": 0.25,
+            "group_2": 0.25,
+            "group_3": 0.25,
+            "group_4": 0.25,
 
-            "group_1": 0.94,
-            "group_2": 0.02,
-            "group_3": 0.02,
-            "group_4": 0.02,
-
-            "duration_2": 0.94,
-            "duration_1": 0.02,
-            "duration_3": 0.02,
-            "duration_4": 0.02,
+            "duration_2": 0.4,
+            "duration_1": 0.3,
+            "duration_3": 0.2,
+            "duration_4": 0.1,
 
             "needs_computers": 0.5,
             "not_needs_computers": 0.5,
 
-            "NORMAL_WEEKLY_rrule": 0.79,
-            "SPECIAL_WEEKLY_rrule": 0.05,
+            "NORMAL_WEEKLY_rrule": 0.6,
+            "SPECIAL_WEEKLY_rrule": 0.22,
             "DAILY_rrule": 0.15,
             "MONTHLY_rrule": 0.01,
 
@@ -42,8 +41,8 @@
             "optional": 0.4
         },
         "rooms": {
-            "possible_room_to_rasp_ratios": [0.1, 0.12, 0.15, 0.16, 0.17, 0.18, 0.22, 0.3],
-            "possible_computer_room_percentages": [0.2, 0.3, 0.35, 0.4, 0.5]
+            "possible_room_to_rasp_ratios": [0.1, 0.12, 0.15, 0.16, 0.17, 0.18, 0.22, 0.3, 0.4, 0.5],
+            "possible_computer_room_percentages": [0.2, 0.3, 0.35, 0.4, 0.5, 0.6]
         }
     },
 
