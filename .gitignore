@@ -1,6 +1,5 @@
 __pycache__/
 rasp_env/
-*.pickle
 *.txt
 generate_input/csvs/
 generate_input/jsons/
