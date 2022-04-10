@@ -14,29 +14,37 @@ def is_valid_rrule(rrule_str: str, START_SEMESTER_DATE: datetime, END_SEMESTER_D
         print(f"ERROR: In rasps.csv -> In Row {index} cannot parse \"rrule\".")
         return False
 
+    days = {0: "monday", 1: "tuesday", 2: "wednesday", 3: "thursday", 4: "friday", 5: "saturday", 6: "sunday"}
+    allowed_days = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+
     start_sem_date_repr = START_SEMESTER_DATE.strftime("%d/%m/%Y,%H:%M")
     end_sem_date_repr   = END_SEMESTER_DATE.strftime("%d/%m/%Y,%H:%M")
 
     possible_indexes = list(hour_to_index.values())
     all_dates = list(rrule_obj)
+
     for rrule_date in all_dates:
         rrule_date_repr = rrule_date.strftime("%d/%m/%Y,%H:%M")
         hour_min = rrule_date.strftime("%H:%M")
+        weekday = days[rrule_date.weekday()]
 
+        if weekday not in allowed_days:
+            print(f"ERROR: In rasps.csv -> In Row {index} {rasp.id=} -> invalid \"rrule\" because rrule date={rrule_date_repr} has a weekday '{weekday}' but only these are allowed {allowed_days}")
+            return False
         if rrule_date < START_SEMESTER_DATE:
-            print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} is lesser than START_SEMESTER_DATE={start_sem_date_repr}.")
+            print(f"ERROR: In rasps.csv -> In Row {index} {rasp.id=} -> invalid \"rrule\" because rrule date={rrule_date_repr} is lesser than START_SEMESTER_DATE={start_sem_date_repr}.")
             return False
         if rrule_date > END_SEMESTER_DATE:
-            print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} is bigger than END_SEMESTER_DATE={end_sem_date_repr}.")
+            print(f"ERROR: In rasps.csv -> In Row {index} {rasp.id=} -> invalid \"rrule\" because rrule date={rrule_date_repr} is bigger than END_SEMESTER_DATE={end_sem_date_repr}.")
             return False
         if hour_min != "00:00" and hour_min not in hour_to_index:
-            print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min which is not an academic hour:min.")
+            print(f"ERROR: In rasps.csv -> In Row {index} {rasp.id=} -> invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min which is not an academic hour:min.")
             return False
         if hour_min != "00:00":
             index = hour_to_index[hour_min]
             duration = int(rasp.duration)
             if index + duration - 1 not in possible_indexes:
-                print(f"ERROR: In rasps.csv -> In Row {index} invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min that is too late to hold {duration=} academic hours.")
+                print(f"ERROR: In rasps.csv -> In Row {index} {rasp.id=} -> invalid \"rrule\" because rrule date={rrule_date_repr} has hour:min that is too late to hold {duration=} academic hours.")
                 return False
 
     return True

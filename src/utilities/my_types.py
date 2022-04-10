@@ -38,4 +38,5 @@ State = namedtuple('State',  ['is_winter','semesters',
                               'mutable_constraints',
                               'timetable', 'grades',
                               'rasp_rrules', 'rrule_space',
-                              'groups', 'subject_types'])
+                              'groups', 'subject_types',
+                              'unsuccessful_rasps'])

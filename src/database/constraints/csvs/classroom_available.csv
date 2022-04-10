@@ -1,0 +1,9 @@
+room_id,monday,tuesday,wednesday,thursday,friday
+203,"8,16","9,16",T,T,T
+303,F,F,"10,11",T,T
+302,F,F,F,"12,16",T
+istra,"1,5",F,F,"5,6",T
+RV,"1,9","1,9","1,9","1,9","1,9"
+Rinf,F,T,T,T,T
+402,"1,6,11,16","9,16","11,16","1,2,8,16","5,9"
+FOOZ,F,F,F,F,F

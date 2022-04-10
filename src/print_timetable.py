@@ -1,16 +1,17 @@
 import numpy as np
 from tabulate import tabulate
 import datetime
-from utilities.general_utilities import load_state
+from utilities.general_utilities import load_state, load_population
 
 
 """
 String representation of a rasp that will be shown in timetable.
 """
-def show_object_str(show_object):
+def show_object_str(show_object, by_sem_id):
     rasp, room_id = show_object["rasp"], show_object["room_id"]
     rasp_repr = str(rasp.subject_id) + str(rasp.type) + str(rasp.group)
-    return f"{rasp_repr} {room_id} {rasp.professor_id}"
+    optional = "*" if by_sem_id in rasp.optional_in_semester_ids else ""
+    return f"{rasp_repr}{optional} {room_id} {rasp.professor_id}"
 
 
 """
@@ -43,7 +44,7 @@ def get_print_table(week_matrix, NUM_DAYS, NUM_HOURS, by_prof_id="", by_room_id=
                                              by_sem_id in obj["rasp"].optional_in_semester_ids]
 
             for show_object in week_matrix[day, hour]:
-                obj_str = show_object_str(show_object)
+                obj_str = show_object_str(show_object, by_sem_id)
                 for hr in range(hour, hour+show_object["rasp"].duration):
                     print_table[hr, day+1].append(obj_str)
 
@@ -56,8 +57,8 @@ Prints the timetable in stdout.
 - by rooms, by profs, and by semesters
 Can be redirected to a .txt file.
 """
-def print_timetable():
-    state = load_state()
+def print_timetable(genetic=False):
+    state = load_population()[0] if genetic else load_state()
     timetable = state.timetable
     rasp_rrules = state.rasp_rrules
     rasps = timetable.keys()
@@ -114,4 +115,4 @@ def print_timetable():
             print(tabulate(week_matrix, headers=['#','monday', 'tuesday', 'wednesday', 'thursday', 'friday'], numalign="left", stralign="left", tablefmt='fancy_grid'))
             print("")
 
-print_timetable()
+print_timetable(genetic = False)

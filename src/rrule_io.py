@@ -11,6 +11,16 @@ from utilities.my_types import State
 from utilities.general_utilities import get_size
 
 """
+Saves state to a .pickle file.
+"""
+def save_timetable_to_file(state, path):
+    print(f"Saving sample to {path}")
+    with open(path, "wb") as p:
+        print(get_size(state) / 10**6)
+        pickle.dump(state, p)
+
+
+"""
 Starts solver whose goal is to construct a timetable with fewest collisions possible.
 Returns an State object that holds all information necessary to manipulate the timetable
 in the future.
@@ -41,31 +51,26 @@ def request_solver():
             state = State(is_winter, semesters, time_structure, rooms, students_per_rasp,
                           initial_constraints, mutable_constraints,
                           timetable, grades, rasp_rrules, rrule_space,
-                          groups, subject_types)
+                          groups, subject_types, set())
 
             optimizer.iterate(state, 100000)
+            state.unsuccessful_rasps.clear()
 
             if state.grades["all"]["totalScore"] != 0:
+                save_timetable_to_file(state, "saved_timetables/one_state.pickle")
+                break
                 #print(state.grades)
                 bads += 1
 
             if state.grades["all"]["totalScore"] == 0:
                 goods += 1
-                name = "saved_timetables/zero_timetable.pickle"
-                print(f"Saving sample to {name}")
-                with open(name, "wb") as p:
-                    print(get_size(state) / 10**6)
-                    pickle.dump(state, p)
+                save_timetable_to_file(state, "saved_timetables/one_state.pickle")
                 break
 
         except KeyboardInterrupt:
-            name = "saved_timetables/errors_timetable.pickle"
-            print(f"Saving sample to {name}")
-            with open(name, "wb") as p:
-                print(get_size(state) / 10**6)
-                pickle.dump(state, p)
             break
 
+        save_timetable_to_file(state, "saved_timetables/one_state.pickle")
         print(f"{goods=} {bads=}")
 
 request_solver()

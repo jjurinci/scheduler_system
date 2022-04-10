@@ -1,10 +1,13 @@
 import random
 from tqdm import tqdm
+from multiprocessing import Pool
+from itertools import repeat
 import optimizer.grade_tool as grade_tool
 import optimizer.tax_tool   as tax_tool
 import optimizer.rasp_slots as rasp_slots
 import optimizer.why_fail   as why_fail
 from utilities.my_types import State
+
 
 """
 Fills the timetable with random slots.
@@ -12,22 +15,14 @@ Slots are chosen with respect to rasp's rrule, but no measure to prevent collisi
 is taken.
 """
 def set_random_timetable(state: State):
-    print("Generating random timetable.")
-    NUM_HOURS = state.time_structure.NUM_HOURS
     timetable = state.timetable
 
     # Generating a random timetable
-    seen_avs = set()
-    for rasp in timetable:
+    for rasp, _ in timetable.items():
         slot = None
-        while not slot:
-            pool = rasp_slots.get_rasp_slots(state, rasp)
-            pool -= seen_avs
-            try_slot = random.choice(tuple(pool))
-            if try_slot.hour + rasp.duration < NUM_HOURS:
-                slot = try_slot
+        pool = rasp_slots.get_rasp_slots(state, rasp)
+        slot = random.choice(tuple(pool))
 
-        seen_avs.add(slot)
         rasp_slots.update_rasp_rrules(state, slot, rasp)
         tax_tool.tax_all_constraints(state, slot, rasp)
         timetable[rasp] = slot
@@ -36,27 +31,41 @@ def set_random_timetable(state: State):
 """
 Loop where each iteration is an attempt to optimize the timetable grade.
 """
-def iterate(state, generations=10, iterations=1000):
-    BEST_GRADE = state.grades["all"].copy()
+def iterate(population, iterations=1000):
+    population_cap = len(population)
+    population.sort(key=lambda x: x[1].grades["all"]["totalScore"], reverse=True)
+    BEST_GRADE = population[0][1].grades["all"].copy()
     print(0, BEST_GRADE)
 
-    unsuccessful_rasps = set()
-    for iteration in tqdm(range(iterations)):
-        #print("STATE: ", get_size(state) / 10**6, "MB.")
-        converged = find_better_grade(state, unsuccessful_rasps)
+    for generation in tqdm(range(iterations)):
+        #with Pool(7) as p:
+        #    mutations = p.map_async(find_better_grade, population)
+        #    mutations.wait()
 
-        if state.grades["all"]["totalScore"] > BEST_GRADE["totalScore"]:
-            BEST_GRADE = state.grades["all"].copy()
-            tqdm.write(f"{iteration}, {BEST_GRADE}")
+        mutations = [find_better_grade(pop) for pop in population]
 
-        if state.grades["all"]["totalScore"] == 0:
+        population += mutations #mutations.get()
+        population.sort(key=lambda x: (x[1].grades["all"]["totalScore"], x[0]), reverse=True)
+        population = population[:population_cap]
+
+        calc_grade = population[0][1].grades["all"]
+        if calc_grade["totalScore"] > BEST_GRADE["totalScore"]:
+            BEST_GRADE = calc_grade.copy()
+            tqdm.write(f"{generation}, {BEST_GRADE}")
+
+        if BEST_GRADE["totalScore"] == 0:
             print("Found 0 score solution.")
-            return
+            break
 
-        elif converged:
-            print("No 0 score solution.")
-            return
+        elif all(converged for (converged, _) in population):
+            print("Didn't find 0 score solution.")
+            break
 
+    population = [state for (_, state) in population]
+    for state in population:
+        state.unsuccessful_rasps.clear()
+
+    return population
 
 """
 Transformation function:
@@ -75,9 +84,9 @@ Transformation function:
        "Converged" means that either all rasps have been scheduled with no collisions,
        OR rasps have been scheduled with collisions but no further improvement could be found.
 """
-def find_better_grade(state: State, unsuccessful_rasps: set):
+def find_better_grade(data):
+    _, state = data
     timetable   = state.timetable
-    rasp_rrules = state.rasp_rrules
     grades      = state.grades
 
     # Pick a random problematic rasp
@@ -86,7 +95,7 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     rasp0 = None
     first_iters, skipped_iters = 0, 0
     for rasp in rasps:
-        if rasp.id in unsuccessful_rasps:
+        if rasp.id in state.unsuccessful_rasps:
             skipped_iters += 1
             continue
         first_iters += 1
@@ -95,15 +104,11 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
             rasp0 = rasp
             break
 
-    print("FIRST ITERS: ", first_iters, skipped_iters)
-
     if not rasp0:
-        print("NO PROBLEMATIC RASPS.")
-        return True
+        return (True, state)
 
     old_slot = timetable[rasp0]
     old_grade_with_old_slot = grades["all"].copy()
-    old_rrules = rasp_rrules[rasp0.id].copy()
     timetable.pop(rasp0, 0)
     pool = rasp_slots.get_rasp_slots(state, rasp0)
 
@@ -114,8 +119,6 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
                              old_grade_without_old_slot[k]
                            for k in old_grade_with_old_slot}
 
-    #assert all(x<=0 for x in pure_old_slot_grade.values())
-
     need_same_score   = pure_old_slot_grade["totalScore"] == 0
     need_better_score = pure_old_slot_grade["totalScore"] != 0
 
@@ -125,6 +128,7 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
     the_slot = None
     cnt, skipped = 0, 0
     new_grade_with_new_slot = None
+
     for new_slot in pool_list:
         if why_fail.is_skippable(state, new_slot, rasp0, action):
             skipped += 1
@@ -153,18 +157,16 @@ def find_better_grade(state: State, unsuccessful_rasps: set):
         elif need_same_score:
             why_fail.failure_reason_rigorous(state, action, new_slot, rasp0, pure_new_slot_grade)
 
-    print("ITERS: ", cnt, rasp0.id, "SKIPPED: ", skipped)
-
     if not the_slot:
-        unsuccessful_rasps.add(rasp0.id)
+        state.unsuccessful_rasps.add(rasp0.id)
         timetable[rasp0] = old_slot
-        rasp_rrules[rasp0.id] = old_rrules
+        rasp_slots.update_rasp_rrules(state, old_slot, rasp0)
         tax_tool.tax_all_constraints(state, old_slot, rasp0)
-        return False
+        return (False, state)
     else:
-        unsuccessful_rasps = set()
+        state.unsuccessful_rasps.clear()
 
     tax_tool.tax_all_constraints(state, the_slot, rasp0)
 
-    #assert(grades["all"][k]<=0 and grades["all"][k] == new_grade_with_new_slot[k] for k in grades["all"])
     timetable[rasp0] = the_slot
+    return (False, state)

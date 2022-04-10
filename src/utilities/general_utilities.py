@@ -3,11 +3,22 @@ import pickle
 import json
 
 """
-Returns complete state from a .pickle file.
+Returns complete state from a .pickle file. (local search)
 """
 def load_state():
     settings = load_settings()
     path = settings["path_state"]
+    with open(path, "rb") as f:
+        state = pickle.load(f)
+    return state
+
+
+"""
+Returns population from a .pickle file. (genetic algorithm)
+"""
+def load_population():
+    settings = load_settings()
+    path = settings["path_population"]
     with open(path, "rb") as f:
         state = pickle.load(f)
     return state

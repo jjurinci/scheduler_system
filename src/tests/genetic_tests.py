@@ -2,16 +2,12 @@ import numpy as np
 import data_api.time_structure as time_api
 from collections import defaultdict
 from dateutil.rrule import rrulestr
-from utilities.general_utilities import load_state, print_size, get_size
+from utilities.general_utilities import load_population, print_size, get_size
 from utilities.my_types import State, MutableConstraints
 from optimizer import tax_tool
 import optimizer.grade_tool as grade_tool
 import data_api.constraints as cons_api
 import optimizer.rasp_slots as rasp_slots
-
-state = load_state()
-print(get_size(state) / 10**6)
-print_size(state)
 
 
 """
@@ -288,7 +284,13 @@ def correct_rrules(state):
             assert correct_all_dates[i] == chosen_all_dates[i]
 
 
-all_rasps_have_dates(state)
-all_dates_correct_start(state)
-correct_rrules(state)
-timetable_properly_taxed(state)
+population = load_population()
+print("Size: ", get_size(population) / 10**6, "MB")
+
+for index, state in enumerate(population):
+    totalScore = state.grades["all"]["totalScore"]
+    print(f"Testing {index+1} state. ({totalScore})")
+    all_rasps_have_dates(state)
+    all_dates_correct_start(state)
+    correct_rrules(state)
+    timetable_properly_taxed(state)

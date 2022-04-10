@@ -78,8 +78,6 @@ def analyze_rasps():
     subject_ids = subj_api.get_subject_ids_csv()
     improper_format = False
 
-    #fixed_hour
-
     for index, row in rasps.iterrows():
         if not row.id or \
            row.professor_id not in professor_ids or \
