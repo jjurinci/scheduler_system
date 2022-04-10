@@ -1,8 +1,5 @@
 __pycache__/
 rasp_env/
-database/
-visual_timetables/
-saved_timetables/
 *.pickle
 *.txt
 generate_input/csvs/
