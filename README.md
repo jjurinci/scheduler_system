@@ -58,11 +58,6 @@ If you wish to check to which rooms a rasp can be moved without any collisions, 
 python -m movement.room_change
 ```
 
-If you wish to check where the collisions are, run the following command:
-```
-python -m movement.timetable_problems
-```
-
 ## Testing the solution
 If you wish to test whether the solver calculated correctly, run the following command:
 ```
