@@ -14,17 +14,6 @@ def load_state():
 
 
 """
-Returns population from a .pickle file. (genetic algorithm)
-"""
-def load_population():
-    settings = load_settings()
-    path = settings["path_population"]
-    with open(path, "rb") as f:
-        state = pickle.load(f)
-    return state
-
-
-"""
 Returns settings of the algorithm (paths, etc)
 """
 def load_settings():
@@ -32,6 +21,16 @@ def load_settings():
     with open(name, "r") as f:
         settings = json.load(f)
     return settings
+
+
+"""
+Saves state to a .pickle file.
+"""
+def save_timetable_to_file(state, path):
+    print(f"Saving sample to {path}")
+    with open(path, "wb") as p:
+        print(get_size_recordclass(state))
+        pickle.dump(state, p)
 
 
 """
@@ -58,15 +57,23 @@ def get_size(obj, seen=None):
 
 
 """
+Returns size of recordclass object in MB.
+"""
+def get_size_recordclass(state):
+    total_size = sum(get_size(state[index]) for index, _ in enumerate(state.__fields__))
+    return round(total_size / 10**6, 4)
+
+
+"""
 Prints state size in MB.
 """
 def print_size(state):
-    total = round(get_size(state) / 10**6,4)
+    total = get_size_recordclass(state)
     space = " " * (20 - len("TOTAL"))
     print("TOTAL" + space, ":", total, "\tMB. ", "100%")
     print("-"*20)
     size_list = []
-    for index, key in enumerate(state._fields):
+    for index, key in enumerate(state.__fields__):
         size = round(get_size(state[index]) / 10**6, 4)
         percentage = round((size / total) * 100, 2)
         size_list.append((size, key, percentage))

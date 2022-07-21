@@ -20,7 +20,6 @@
     "path_daystructure_json": "database/input/day_structure.json",
 
     "path_state": "saved_timetables/one_state.pickle",
-    "path_population": "saved_timetables/population.pickle",
 
     "path_faculties_csv": "",
     "path_studyprogrammes_csv": "",

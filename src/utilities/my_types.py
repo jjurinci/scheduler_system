@@ -1,4 +1,5 @@
 from collections import namedtuple
+from recordclass import recordclass
 
 # Structure of university
 University = namedtuple('University', ['id', 'name', 'user_id'])
@@ -31,12 +32,11 @@ RaspRRULES = namedtuple('RaspRRULES', ["DTSTART", "UNTIL", "FREQ",
                                        "possible_all_dates_idx"])
 
 # STATE
-State = namedtuple('State',  ['is_winter','semesters',
-                              'time_structure',
+State = recordclass('State',  ['is_winter','semesters',
+                              'time_structure', 'rasps',
                               'rooms','students_per_rasp',
                               'initial_constraints',
+                              'groups', 'subject_types',
                               'mutable_constraints',
                               'timetable', 'grades',
-                              'rasp_rrules', 'rrule_space',
-                              'groups', 'subject_types',
-                              'unsuccessful_rasps'])
+                              'rasp_rrules', 'rrule_space'])

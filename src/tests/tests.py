@@ -10,7 +10,6 @@ import data_api.constraints as cons_api
 import optimizer.rasp_slots as rasp_slots
 
 state = load_state()
-print(get_size(state) / 10**6)
 print_size(state)
 
 
@@ -43,10 +42,11 @@ def timetable_properly_taxed(state):
     test_mutable_constraints = MutableConstraints(init_rooms_occupied, init_profs_occupied,
                                                   init_nasts_occupied, init_optionals_occupied)
 
-    test_state = State(state.is_winter, state.semesters, state.time_structure,
+    test_state = State(state.is_winter, state.semesters, state.time_structure, state.rasps,
                        state.rooms, state.students_per_rasp, state.initial_constraints,
+                       state.groups, state.subject_types,
                        test_mutable_constraints, state.timetable, grade_tool.init_grades(rasps, rooms),
-                       state.rasp_rrules, state.rrule_space, state.groups, state.subject_types, set())
+                       state.rasp_rrules, state.rrule_space)
 
     # rasp_rrules[all_dates] is already set to parallel groups so the tax algo will read wrong
     for rasp in timetable:
