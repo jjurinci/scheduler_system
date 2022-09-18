@@ -1,0 +1,28 @@
+{
+    "path_semesters_csv":           "database/input/semesters.csv",
+    "path_subjects_csv":            "database/input/subjects.csv",
+    "path_rasps_csv":               "database/input/rasps.csv",
+    "path_professors_csv":          "database/input/professors.csv",
+    "path_classrooms_csv":          "database/input/classrooms.csv",
+    "path_classroom_available_csv": "database/constraints/classroom_available.csv",
+    "path_professor_available_csv": "database/constraints/professor_available.csv",
+
+    "path_semesters_json":           "temp_storage/database/input/semesters.json",
+    "path_subjects_json":            "temp_storage/database/input/subjects.json",
+    "path_rasps_json":               "temp_storage/database/input/rasps.json",
+    "path_professors_json":          "temp_storage/database/input/professors.json",
+    "path_classrooms_json":          "temp_storage/database/input/classrooms.json",
+    "path_classroom_available_json": "temp_storage/database/constraints/classroom_available.json",
+    "path_professor_available_json": "temp_storage/database/constraints/professor_available.json",
+
+
+    "path_startendsem_json":  "temp_storage/database/input/start_end_semester.json",
+    "path_daystructure_json": "temp_storage/database/input/day_structure.json",
+
+    "path_state": "saved_timetables/state.pickle",
+
+    "path_faculties_csv": "",
+    "path_studyprogrammes_csv": "",
+    "path_faculties_json": "",
+    "path_studyprogrammes_json": ""
+}

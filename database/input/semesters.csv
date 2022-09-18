@@ -1,0 +1,15 @@
+id,num_semester,season,num_students,study_programme_id
+fipu_inf_pred_info_sem1,1,W,55,fipu_inf_pred_info
+fipu_inf_pred_info_sem2,2,S,55,fipu_inf_pred_info
+fipu_inf_pred_info_sem3,3,W,50,fipu_inf_pred_info
+fipu_inf_pred_info_sem4,4,S,50,fipu_inf_pred_info
+fipu_inf_pred_info_sem5,5,W,50,fipu_inf_pred_info
+fipu_inf_pred_info_sem6,6,S,50,fipu_inf_pred_info
+fipu_inf_dipl_info_sem1,1,W,55,fipu_inf_dipl_info
+fipu_inf_dipl_info_sem2,2,S,55,fipu_inf_dipl_info
+fipu_inf_dipl_info_sem3,3,W,18,fipu_inf_dipl_info
+fipu_inf_dipl_info_sem4,4,S,18,fipu_inf_dipl_info
+fipu_inf_dipl_info_nast_sem1,1,W,15,fipu_inf_dipl_info_nast
+fipu_inf_dipl_info_nast_sem2,2,S,15,fipu_inf_dipl_info_nast
+fipu_inf_dipl_info_nast_sem3,3,W,10,fipu_inf_dipl_info_nast
+fipu_inf_dipl_info_nast_sem4,4,S,10,fipu_inf_dipl_info_nast

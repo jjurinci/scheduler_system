@@ -1,0 +1,282 @@
+#include "tax_sems.h"
+#include "../rrule_logic/cons_api.h"
+#include <math.h>
+#include <algorithm>
+#include <set>
+
+std::map<triplet, std::vector<std::pair<std::string, int>>> history;
+void clear_history() {
+    history.clear();
+}
+
+void print_history(triplet date) {
+    std::cout<<"\n";
+
+    int i=1;
+    for(auto h : history[date]) {
+        std::cout<<i++<<" "<<h.first<<" "<<h.second<<"\n";
+    }
+}
+
+void print_own_groups(State& state, std::set<triplet> own_group_dates, Rasp& rasp) {
+    std::cout<<"own group dates: ";
+    for(auto datex : own_group_dates) {
+        int week = std::get<0>(datex);
+        int day  = std::get<1>(datex);
+        int hour = std::get<2>(datex);
+        std::cout<<"("<<week<<","<<day<<","<<hour<<") | ";
+    }
+    std::cout<<"\nother groups: ";
+    std::string own_type = rasp.subject_id + rasp.type;
+    for(auto other_rasp_id : state.groups[own_type]) {
+        std::cout<<other_rasp_id<<" ";
+        std::cout<<"\nall_dates: ";
+        for(auto datey : state.rasp_rrules[other_rasp_id].all_dates) {
+            int week = std::get<0>(datey);
+            int day  = std::get<1>(datey);
+            int hour = std::get<2>(datey);
+            bool found = own_group_dates.find(datey) != own_group_dates.end();
+            std::cout<<"("<<week<<","<<day<<","<<hour<<")["<<bool(found)<<"] | ";
+        }
+        std::cout<<"\n";
+    }
+}
+
+void print_other_groups(State& state, std::set<triplet> other_group_dates, Rasp& rasp) {
+    std::cout<<"other group dates: ";
+    for(auto datex : other_group_dates) {
+        int week = std::get<0>(datex);
+        int day  = std::get<1>(datex);
+        int hour = std::get<2>(datex);
+        std::cout<<"("<<week<<","<<day<<","<<hour<<") | ";
+    }
+    std::cout<<"\nother types: ";
+    std::string own_type = rasp.subject_id + rasp.type;
+    for(auto other_type : state.subject_types[rasp.subject_id]) {
+
+        std::set<id_rasp>& type_groups = state.groups[other_type];
+        for(auto other_rasp_id : type_groups) {
+            std::cout<<other_rasp_id<<" ";
+            std::cout<<"\nall_dates: ";
+            for(auto datey : state.rasp_rrules[other_rasp_id].all_dates) {
+                int week = std::get<0>(datey);
+                int day  = std::get<1>(datey);
+                int hour = std::get<2>(datey);
+                bool found = other_group_dates.find(datey) != other_group_dates.end();
+                std::cout<<"("<<week<<","<<day<<","<<hour<<")["<<bool(found)<<"] | ";
+            }
+            std::cout<<"\n";
+        }
+    }
+}
+
+void update_grade_sems(State& state, int punish, bool plus) {
+    if(plus) {
+        state.grade.semScore   += punish;
+        state.grade.totalScore += punish;
+    }
+    else {
+        state.grade.semScore   -= punish;
+        state.grade.totalScore -= punish;
+    }
+}
+
+int sems_tax_punish(int old_cnt_occ, int old_cnt_colls, int new_cnt_occ, int new_cnt_colls) {
+    int old_score = (old_cnt_colls <= 1) ? 0 : old_cnt_occ * -30;
+    int new_score = (new_cnt_colls <= 1) ? 0 : new_cnt_occ * -30;
+    return -std::abs(old_score - new_score);
+}
+
+void tax_rrule_in_sems_mandatory(State& state, id_sem sem_id, Rasp& rasp,
+                                 std::set<triplet>& own_group_dates) {
+    std::vector<triplet>& all_dates   = state.rasp_rrules[rasp.id].all_dates;
+    array3D sem_occupied    = state.mutable_constraints.sems_occupied[sem_id];
+    array3D sems_collisions = state.mutable_constraints.sems_collisions[sem_id];
+    int punish = 0;
+    for(triplet date : all_dates) {
+        int week = std::get<0>(date);
+        int day  = std::get<1>(date);
+        int hour = std::get<2>(date);
+        int old_cnt_occ   = int(sem_occupied[week][day][hour]);
+        int old_cnt_colls = int(sems_collisions[week][day][hour]);
+
+        if(own_group_dates.find(date) == own_group_dates.end()) {
+            sems_collisions[week][day][hour] += 1;
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("mandatory   tax\t"+ rasp.id + "\t", val));
+        }
+        else {
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("||mandatory   tax\t"+ rasp.id + "\t", val));
+        }
+
+        int new_cnt_colls = int(sems_collisions[week][day][hour]);
+        punish += sems_tax_punish(old_cnt_occ, old_cnt_colls, old_cnt_occ+1, new_cnt_colls);
+        sem_occupied[week][day][hour] += 1;
+    }
+    if(punish) {
+        update_grade_sems(state, punish, true);
+    }
+}
+
+void tax_rrule_in_sems_optional(State& state, id_sem sem_id, Rasp& rasp,
+                                std::set<triplet>& own_group_dates,
+                                std::set<triplet> other_group_dates) {
+    std::vector<triplet>& all_dates     = state.rasp_rrules[rasp.id].all_dates;
+    array3D sem_occupied                = state.mutable_constraints.sems_occupied[sem_id];
+    array3D optionals_occupied          = state.mutable_constraints.optionals_occupied[sem_id];
+    array3D sems_collisions             = state.mutable_constraints.sems_collisions[sem_id];
+
+    int punish = 0;
+    for(triplet date : all_dates) {
+        int week = std::get<0>(date);
+        int day  = std::get<1>(date);
+        int hour = std::get<2>(date);
+        int old_cnt_occ   = int(sem_occupied[week][day][hour]);
+        int old_cnt_colls = int(sems_collisions[week][day][hour]);
+
+        if(own_group_dates.find(date) == own_group_dates.end() &&
+          (optionals_occupied[week][day][hour]==0 || other_group_dates.find(date) != other_group_dates.end())) {
+            sems_collisions[week][day][hour] += 1;
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("optional   tax\t"+ rasp.id + "\t", val));
+        }
+        else {
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("||optional   tax\t"+ rasp.id + "\t", val));
+        }
+
+        int new_cnt_colls = int(sems_collisions[week][day][hour]);
+        punish += sems_tax_punish(old_cnt_occ, old_cnt_colls, old_cnt_occ+1, new_cnt_colls);
+        sem_occupied[week][day][hour] += 1;
+        optionals_occupied[week][day][hour] += 1;
+    }
+    if(punish) {
+        update_grade_sems(state, punish, true);
+    }
+}
+
+void untax_rrule_in_sems_mandatory(State& state, id_sem sem_id, Rasp& rasp,
+                                   std::set<triplet> own_group_dates) {
+    std::vector<triplet>& all_dates   = state.rasp_rrules[rasp.id].all_dates;
+    array3D sem_occupied              = state.mutable_constraints.sems_occupied[sem_id];
+    array3D sems_collisions           = state.mutable_constraints.sems_collisions[sem_id];
+
+    int punish = 0;
+    for(triplet date : all_dates) {
+        int week = std::get<0>(date);
+        int day  = std::get<1>(date);
+        int hour = std::get<2>(date);
+        int old_cnt_occ   = int(sem_occupied[week][day][hour]);
+        int old_cnt_colls = int(sems_collisions[week][day][hour]);
+
+        if(own_group_dates.find(date) == own_group_dates.end()) {
+            sems_collisions[week][day][hour] -= 1;
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("mandatory untax\t"+ rasp.id + "\t", val));
+        }
+        else {
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("||mandatory untax\t"+ rasp.id + "\t", val));
+        }
+
+
+        if(sems_collisions[week][day][hour] == 255) {
+            std::cout<<rasp<<" it's 255 from mandatory untax AT "<<week<<","<<day<<","<<hour<<"\n";
+            print_own_groups(state, own_group_dates, rasp);
+            print_history(date);
+            exit(0);
+        }
+
+        int new_cnt_colls = int(sems_collisions[week][day][hour]);
+        punish += sems_tax_punish(old_cnt_occ, old_cnt_colls, old_cnt_occ-1, new_cnt_colls);
+        sem_occupied[week][day][hour] -= 1;
+    }
+    if(punish) {
+        update_grade_sems(state, punish, false);
+    }
+}
+
+void untax_rrule_in_sems_optional(State& state, id_sem sem_id, Rasp& rasp,
+                                  std::set<triplet> own_group_dates,
+                                  std::set<triplet> other_group_dates) {
+    std::vector<triplet>& all_dates     = state.rasp_rrules[rasp.id].all_dates;
+    array3D sem_occupied                = state.mutable_constraints.sems_occupied[sem_id];
+    array3D optionals_occupied          = state.mutable_constraints.optionals_occupied[sem_id];
+    array3D sems_collisions             = state.mutable_constraints.sems_collisions[sem_id];
+
+    int punish = 0;
+    for(triplet date : all_dates) {
+        int week = std::get<0>(date);
+        int day  = std::get<1>(date);
+        int hour = std::get<2>(date);
+        int old_cnt_occ   = int(sem_occupied[week][day][hour]);
+        int old_cnt_colls = int(sems_collisions[week][day][hour]);
+
+        if(own_group_dates.find(date) == own_group_dates.end() &&
+          (optionals_occupied[week][day][hour] == 1 || other_group_dates.find(date) != other_group_dates.end())) {
+            sems_collisions[week][day][hour] -= 1;
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("optional untax\t"+ rasp.id + "\t", val));
+        }
+        else {
+            int val = sems_collisions[week][day][hour];
+            history[date].push_back(std::make_pair("||optional untax\t"+ rasp.id + "\t", val));
+        }
+
+        if(sems_collisions[week][day][hour] == 255) {
+            std::cout<<rasp<<" it's 255 from optional untax at "<<week<<","<<day<<","<<hour<<"\n";
+            std::cout<<"OPTIONALS 1 SATISFIED: "<<bool(optionals_occupied[week][day][hour] == 1)<<"\n";
+            print_own_groups(state, own_group_dates, rasp);
+            std::cout<<"------------\n\n";
+            print_other_groups(state, other_group_dates, rasp);
+            print_history(date);
+            exit(0);
+        }
+
+        int new_cnt_colls = int(sems_collisions[week][day][hour]);
+        punish += sems_tax_punish(old_cnt_occ, old_cnt_colls, old_cnt_occ-1, new_cnt_colls);
+        sem_occupied[week][day][hour] -= 1;
+        optionals_occupied[week][day][hour] -= 1;
+    }
+    if(punish) {
+        update_grade_sems(state, punish, false);
+    }
+}
+
+void tax_rrule_in_sems(State& state, Rasp& rasp) {
+    std::set<id_sem>& mand = rasp.mandatory_in_semester_ids;
+    std::set<id_sem>& opti = rasp.optional_in_semester_ids;
+    std::set<id_sem> sem_ids;
+    std::set_union(mand.begin(), mand.end(), opti.begin(), opti.end(), std::inserter(sem_ids, sem_ids.begin()));
+    std::set<triplet> own_group_dates = get_own_groups_all_dates(state, rasp);
+    std::set<triplet> other_group_dates = get_other_groups_all_dates(state, rasp);
+    for(id_sem sem_id : sem_ids) {
+        bool rasp_mandatory = (mand.find(sem_id) != mand.end()) ? true : false;
+        if(rasp_mandatory) {
+            tax_rrule_in_sems_mandatory(state, sem_id, rasp, own_group_dates);
+        }
+        else {
+            tax_rrule_in_sems_optional(state, sem_id, rasp, own_group_dates, other_group_dates);
+        }
+    }
+}
+
+void untax_rrule_in_sems(State& state, Rasp& rasp) {
+    std::set<id_sem>& mand = rasp.mandatory_in_semester_ids;
+    std::set<id_sem>& opti = rasp.optional_in_semester_ids;
+    std::set<id_sem> sem_ids;
+    std::set_union(mand.begin(), mand.end(), opti.begin(), opti.end(), std::inserter(sem_ids, sem_ids.begin()));
+    std::set<triplet> own_group_dates   = get_own_groups_all_dates(state, rasp);
+    std::set<triplet> other_group_dates = get_other_groups_all_dates(state, rasp);
+
+    for(id_sem sem_id : sem_ids) {
+        bool rasp_mandatory = (mand.find(sem_id) != mand.end()) ? true : false;
+        if(rasp_mandatory) {
+            untax_rrule_in_sems_mandatory(state, sem_id, rasp, own_group_dates);
+        }
+        else {
+            untax_rrule_in_sems_optional(state, sem_id, rasp, own_group_dates, other_group_dates);
+        }
+    }
+}

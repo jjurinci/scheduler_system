@@ -1,5 +1,7 @@
-__pycache__/
-rasp_env/
+__pycache__
+venv
 *.txt
-generate_input/csvs/
-generate_input/jsons/
+cpp_optimizer/build
+temp_storage
+generate_input/csvs
+generate_input/jsons
