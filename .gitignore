@@ -1,6 +1,5 @@
 __pycache__
 venv
-*.txt
 cpp_optimizer/build
 temp_storage
 generate_input/csvs

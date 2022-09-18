@@ -3,7 +3,11 @@
 System that solves academic timetables where each subject has its own [rrule](https://dateutil.readthedocs.io/en/stable/rrule.html).
 
 ## Dependencies
-After cloning the repository, you will need to install the following Python dependencies: **numpy**, **pandas**, **python-dateutil**, **tqdm**, **tabulate**.
+After cloning the repository, you will need to install the following Python dependencies: **numpy**, **pandas**, **python-dateutil**, **tqdm**, **tabulate**, **recordclass**.
+```
+cd scheduler_system
+pip install -r requirements.txt
+```
 
 ## Input
 
