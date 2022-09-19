@@ -18,7 +18,7 @@ Returns settings of the algorithm (paths, etc)
 """
 def load_settings():
     name = "settings.json"
-    with open(name, "r") as f:
+    with open(name, "r", encoding="utf-8") as f:
         settings = json.load(f)
     return settings
 

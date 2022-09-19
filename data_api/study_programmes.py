@@ -12,7 +12,7 @@ def get_study_programmes():
     settings = load_settings()
     study_programmes_path = settings["path_study_programmes_json"]
 
-    with open(study_programmes_path, "r") as fp:
+    with open(study_programmes_path, "r", encoding="utf-8") as fp:
         study_programmes = json.load(fp)["study_programmes"]
 
     typed_programmes = []
@@ -31,7 +31,7 @@ def get_study_programmes():
 def get_study_programme_ids_csv():
     settings = load_settings()
     study_programmes_path = settings["path_study_programmes_csv"]
-    with open(study_programmes_path) as csv_file:
+    with open(study_programmes_path, encoding="utf-8") as csv_file:
         study_programmes = pd.read_csv(csv_file,
                                        delimiter=",",
                                        usecols=[0,1,2])

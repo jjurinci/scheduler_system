@@ -79,7 +79,7 @@ def run():
         for week, day, hour in all_dates:
             schedule_matrix[week, day, hour].append(show_object)
 
-    f = open("timetable.txt", "w")
+    f = open("timetable.txt", "w", encoding="utf-8")
     prof_ids = set(rasp.professor_id for rasp in rasps)
     for prof_id in prof_ids:
         for week in range(NUM_WEEKS):

@@ -20,7 +20,7 @@ def analyze_year():
         print(f"ERROR: Maximum file size is 50 MB.")
         return False
 
-    with open(path) as csv_file:
+    with open(path, encoding="utf-8") as csv_file:
         # Is it a properly formatted csv?
         try:
             year = pd.read_csv(csv_file,

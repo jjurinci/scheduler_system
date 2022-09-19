@@ -5,7 +5,7 @@ from utilities.my_types import Semester, Timeblock, TimeStructure, Rasp, Classro
 from datetime import datetime
 
 def json_to_pickle(json_path, pickle_path):
-    with open(json_path, "r") as f:
+    with open(json_path, "r", encoding="utf-8") as f:
         state = json.load(f)
 
     is_winter = state["is_winter"]
@@ -198,6 +198,6 @@ def pickle_to_json(pickle_path, json_path):
             "rrule_table": rrule_table
     }
 
-    with open(json_path, "w") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(state_json, f)
 

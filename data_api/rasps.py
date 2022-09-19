@@ -14,7 +14,7 @@ from utilities.general_utilities import load_settings
 def get_rasps():
     settings = load_settings()
     rasp_path = settings["path_rasps_json"]
-    with open(rasp_path, "r") as fp:
+    with open(rasp_path, "r", encoding="utf-8") as fp:
         rasps = json.load(fp)["rasps"]
 
     subjects = get_subjects()

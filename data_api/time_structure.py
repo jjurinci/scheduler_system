@@ -12,7 +12,7 @@ END_SEMESTER_DATE   = date when the semester ends.
 def get_start_end_year():
     settings = load_settings()
     path = settings["path_startendyear_json"]
-    with open(path, "r") as fp:
+    with open(path, "r", encoding="utf-8") as fp:
         start_end_year = json.load(fp)["start_end_year"][0]
 
     START_SEMESTER_DATE = start_end_year["start_semester_date"]
@@ -41,7 +41,7 @@ def get_timeblocks():
     settings = load_settings()
     path = settings["path_daystructure_json"]
 
-    with open(path, "r") as fp:
+    with open(path, "r", encoding="utf-8") as fp:
         day_structure = json.load(fp)["day_structure"]
 
     timeblocks = []

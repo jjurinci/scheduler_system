@@ -13,7 +13,7 @@ from utilities.general_utilities import load_settings
 def get_professors():
     settings = load_settings()
     professors_path = settings["path_professors_json"]
-    with open(professors_path, "r") as fp:
+    with open(professors_path, "r", encoding="utf-8") as fp:
         professors = json.load(fp)["professors"]
 
     typed_professors = []
@@ -32,7 +32,7 @@ def get_professors():
 def get_professor_ids_csv():
     settings = load_settings()
     professors_path = settings["path_professors_csv"]
-    with open(professors_path) as csv_file:
+    with open(professors_path, encoding="utf-8") as csv_file:
         professors = pd.read_csv(csv_file,
                                  delimiter=",",
                                  usecols=[0,1])
@@ -48,7 +48,7 @@ Returns initial professors constraints from a .json file.
 def get_professors_constraints():
     settings = load_settings()
     professors_available_path = settings["path_professor_available_json"]
-    with open(professors_available_path, "r") as fp:
+    with open(professors_available_path, "r", encoding="utf-8") as fp:
         prof_available = json.load(fp)["professor_available"]
     return prof_available
 

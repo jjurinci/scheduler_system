@@ -6,7 +6,7 @@ import math
 import string
 from itertools import product
 
-with open("generate_input/generate_config.json", "r") as f:
+with open("generate_input/generate_config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
     NUM_DAYS, NUM_HOURS = 5, 16
 
@@ -49,7 +49,7 @@ def get_room_ids():
 
 
 def get_all_rrules():
-    with open("generate_input/rrule_data.json", "r") as j:
+    with open("generate_input/rrule_data.json", "r", encoding="utf-8") as j:
         rrules_pool = json.load(j)
     return rrules_pool
 
@@ -354,7 +354,7 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
-    with open("generate_input/csvs/rasps.csv", "w") as f:
+    with open("generate_input/csvs/rasps.csv", "w", encoding="utf-8") as f:
         header_rasp = ["id", "professor_id", "subject_id", "type", "group", "duration", "needs_computers", "fix_at_room_id", "random_dtstart_weekday", "rrule"]
         writer = csv.writer(f)
         writer.writerow(header_rasp)
@@ -363,7 +363,7 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
             row = [rasp["id"], rasp["professor_id"], rasp["subject_id"], rasp["type"], rasp["group"], rasp["duration"], rasp["needs_computers"], rasp["fix_at_room_id"], rasp["random_dtstart_weekday"], rrule]
             writer.writerow(row)
 
-    with open("generate_input/csvs/professors.csv", "w") as f:
+    with open("generate_input/csvs/professors.csv", "w", encoding="utf-8") as f:
         header_prof = ["id", "name"]
         writer = csv.writer(f)
         writer.writerow(header_prof)
@@ -371,7 +371,7 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
             row = [prof["id"], prof["name"]]
             writer.writerow(row)
 
-    with open("generate_input/csvs/semesters.csv", "w") as f:
+    with open("generate_input/csvs/semesters.csv", "w", encoding="utf-8") as f:
         header_semester = ["id", "num_semester", "season", "num_students", "study_programme_id"]
         writer = csv.writer(f)
         writer.writerow(header_semester)
@@ -379,7 +379,7 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
             row = [sem["id"], sem["num_semester"], sem["season"], sem["num_students"], sem["study_programme_id"]]
             writer.writerow(row)
 
-    with open("generate_input/csvs/subjects.csv", "w") as f:
+    with open("generate_input/csvs/subjects.csv", "w", encoding="utf-8") as f:
         header_subject = ["id", "name", "mandatory_in_semester_ids", "optional_in_semester_ids"]
         writer = csv.writer(f)
         writer.writerow(header_subject)
@@ -391,7 +391,7 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
             row = [sub["id"], sub["name"], mandatory_in_semester_ids, optional_in_semester_ids]
             writer.writerow(row)
 
-    with open("generate_input/csvs/classrooms.csv", "w") as f:
+    with open("generate_input/csvs/classrooms.csv", "w", encoding="utf-8") as f:
         header_classroom = ["id", "name", "capacity", "has_computers"]
         writer = csv.writer(f)
         writer.writerow(header_classroom)
@@ -399,24 +399,24 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
             row = [room["id"], room["name"], room["capacity"], room["has_computers"]]
             writer.writerow(row)
 
-    with open("generate_input/csvs/classroom_available.csv", "w") as f:
+    with open("generate_input/csvs/classroom_available.csv", "w", encoding="utf-8") as f:
         header_classroom_available = ["room_id", "monday", "tuesday", "wednesday", "thursday", "friday"]
         writer = csv.writer(f)
         writer.writerow(header_classroom_available)
 
-    with open("generate_input/csvs/professor_available.csv", "w") as f:
+    with open("generate_input/csvs/professor_available.csv", "w", encoding="utf-8") as f:
         header_professor_available = ["professor_id", "monday", "tuesday", "wednesday", "thursday", "friday"]
         writer = csv.writer(f)
         writer.writerow(header_professor_available)
 
-    with open("generate_input/csvs/start_end_year.csv", "w") as f:
+    with open("generate_input/csvs/start_end_year.csv", "w", encoding="utf-8") as f:
         header_start_end = ["start_semester_date", "end_semester_date"]
         writer = csv.writer(f)
         writer.writerow(header_start_end)
         row = [start_end_dict["start_semester_date"], start_end_dict["end_semester_date"]]
         writer.writerow(row)
 
-    with open("generate_input/csvs/day_structure.csv", "w") as f:
+    with open("generate_input/csvs/day_structure.csv", "w", encoding="utf-8") as f:
         header_daystruct = ["#", "timeblock"]
         writer = csv.writer(f)
         writer.writerow(header_daystruct)
@@ -430,39 +430,39 @@ def create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict, s
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
-    with open("generate_input/jsons/rasps.json", "w") as f:
+    with open("generate_input/jsons/rasps.json", "w", encoding="utf-8") as f:
         obj = {"rasps": rasps}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/professors.json", "w") as f:
+    with open("generate_input/jsons/professors.json", "w", encoding="utf-8") as f:
         obj = {"professors": professors}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/semesters.json", "w") as f:
+    with open("generate_input/jsons/semesters.json", "w", encoding="utf-8") as f:
         obj = {"semesters": list(semesters_dict.values())}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/subjects.json", "w") as f:
+    with open("generate_input/jsons/subjects.json", "w", encoding="utf-8") as f:
         obj = {"subjects": list(subjects_dict.values())}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/classrooms.json", "w") as f:
+    with open("generate_input/jsons/classrooms.json", "w", encoding="utf-8") as f:
         obj = {"classrooms": list(rooms_dict.values())}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/classroom_available.json", "w") as f:
+    with open("generate_input/jsons/classroom_available.json", "w", encoding="utf-8") as f:
         obj = {"classroom_available": []}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/professor_available.json", "w") as f:
+    with open("generate_input/jsons/professor_available.json", "w", encoding="utf-8") as f:
         obj = {"professor_available": []}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/start_end_year.json", "w") as f:
+    with open("generate_input/jsons/start_end_year.json", "w", encoding="utf-8") as f:
         obj = {"start_end_year": [start_end_dict]}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/day_structure.json", "w") as f:
+    with open("generate_input/jsons/day_structure.json", "w", encoding="utf-8") as f:
         obj = {"day_structure": day_struct_dict}
         json.dump(obj, f)
 
@@ -491,10 +491,10 @@ def get_constraint_range():
 
 
 def tighten_room_free_time():
-    with open("generate_input/jsons/classrooms.json", "r") as f:
+    with open("generate_input/jsons/classrooms.json", "r", encoding="utf-8") as f:
         rooms = json.load(f)["classrooms"]
 
-    with open("generate_input/jsons/classroom_available.json", "r") as f:
+    with open("generate_input/jsons/classroom_available.json", "r", encoding="utf-8") as f:
         room_available = json.load(f)["classroom_available"]
         room_available_ids = {room["room_id"] for room in room_available}
 
@@ -535,16 +535,16 @@ def tighten_room_free_time():
                 row[i] = ",".join(value)
         rows.append(row)
 
-    with open("generate_input/jsons/classroom_available.json", "w") as f:
+    with open("generate_input/jsons/classroom_available.json", "w", encoding="utf-8") as f:
         obj = {"classroom_available": room_available}
         json.dump(obj, f)
 
 
 def tighten_prof_free_time():
-    with open("generate_input/jsons/professors.json", "r") as f:
+    with open("generate_input/jsons/professors.json", "r", encoding="utf-8") as f:
         profs = json.load(f)["professors"]
 
-    with open("generate_input/jsons/professor_available.json", "r") as f:
+    with open("generate_input/jsons/professor_available.json", "r", encoding="utf-8") as f:
         prof_available = json.load(f)["professor_available"]
         prof_available_ids = {prof["professor_id"] for prof in prof_available}
 
@@ -584,13 +584,13 @@ def tighten_prof_free_time():
                 row[i] = ",".join(value)
         rows.append(row)
 
-    with open("generate_input/jsons/professor_available.json", "w") as f:
+    with open("generate_input/jsons/professor_available.json", "w", encoding="utf-8") as f:
         obj = {"professor_available": prof_available}
         json.dump(obj, f)
 
 
 def tighten_room_capacity():
-    with open("generate_input/jsons/classrooms.json", "r") as f:
+    with open("generate_input/jsons/classrooms.json", "r", encoding="utf-8") as f:
         rooms = json.load(f)["classrooms"]
 
     NUM_ROOMS = len(rooms)
@@ -610,13 +610,13 @@ def tighten_room_capacity():
         room["capacity"] = str(new_capacity)
         rooms[i] = room
 
-    with open("generate_input/jsons/classrooms.json", "w") as f:
+    with open("generate_input/jsons/classrooms.json", "w", encoding="utf-8") as f:
         obj = {"classrooms": rooms}
         json.dump(obj, f)
 
 
 def tighten_room_computers():
-    with open("generate_input/jsons/classrooms.json", "r") as f:
+    with open("generate_input/jsons/classrooms.json", "r", encoding="utf-8") as f:
         rooms = json.load(f)["classrooms"]
         computer_rooms = [room for room in rooms if room["has_computers"]=="1"]
 
@@ -633,21 +633,21 @@ def tighten_room_computers():
         room["has_computers"] = "0"
         rooms[i] = room
 
-    with open("generate_input/jsons/classrooms.json", "w") as f:
+    with open("generate_input/jsons/classrooms.json", "w", encoding="utf-8") as f:
         obj = {"classrooms": rooms}
         json.dump(obj, f)
 
 
 def tighten_num_rooms():
-    with open("generate_input/jsons/classrooms.json", "r") as f:
+    with open("generate_input/jsons/classrooms.json", "r", encoding="utf-8") as f:
         rooms = json.load(f)["classrooms"]
         if len(rooms) == 1:
             return
 
-    with open("generate_input/jsons/classroom_available.json", "r") as f:
+    with open("generate_input/jsons/classroom_available.json", "r", encoding="utf-8") as f:
         room_available = json.load(f)["classroom_available"]
 
-    with open("generate_input/jsons/rasps.json", "r") as f:
+    with open("generate_input/jsons/rasps.json", "r", encoding="utf-8") as f:
         rasps = json.load(f)["rasps"]
 
     NUM_ROOMS = len(rooms)
@@ -664,24 +664,24 @@ def tighten_num_rooms():
         if rasp["fix_at_room_id"] in CONSTRAIN_ROOMS_IDS:
             rasp["fix_at_room_id"] = None
 
-    with open("generate_input/jsons/classrooms.json", "w") as f:
+    with open("generate_input/jsons/classrooms.json", "w", encoding="utf-8") as f:
         obj = {"classrooms": rooms}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/classroom_available.json", "w") as f:
+    with open("generate_input/jsons/classroom_available.json", "w", encoding="utf-8") as f:
         obj = {"classroom_available": room_available}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/rasps.json", "w") as f:
+    with open("generate_input/jsons/rasps.json", "w", encoding="utf-8") as f:
         obj = {"rasps": rasps}
         json.dump(obj, f)
 
 
 def tighten_semesters_per_subject():
-    with open("generate_input/jsons/subjects.json", "r") as f:
+    with open("generate_input/jsons/subjects.json", "r", encoding="utf-8") as f:
         subjects = json.load(f)["subjects"]
 
-    with open("generate_input/jsons/semesters.json", "r") as f:
+    with open("generate_input/jsons/semesters.json", "r", encoding="utf-8") as f:
         semesters = json.load(f)["semesters"]
 
     NUM_SUBJECTS = len(subjects)
@@ -712,13 +712,13 @@ def tighten_semesters_per_subject():
                        subject["optional_in_semester_ids"].append(semester["id"])
         subjects[i] = subject
 
-    with open("generate_input/jsons/subjects.json", "w") as f:
+    with open("generate_input/jsons/subjects.json", "w", encoding="utf-8") as f:
         obj = {"subjects": subjects}
         json.dump(obj, f)
 
 
 def tighten_students_per_semester():
-    with open("generate_input/jsons/semesters.json", "r") as f:
+    with open("generate_input/jsons/semesters.json", "r", encoding="utf-8") as f:
         semesters = json.load(f)["semesters"]
 
     NUM_SEMESTERS = len(semesters)
@@ -738,13 +738,13 @@ def tighten_students_per_semester():
         semester["num_students"] = str(new_num_students)
         semesters[i] = semester
 
-    with open("generate_input/jsons/semesters.json", "w") as f:
+    with open("generate_input/jsons/semesters.json", "w", encoding="utf-8") as f:
         obj = {"semesters": semesters}
         json.dump(obj, f)
 
 
 def tighten_rasp_needs_computers():
-    with open("generate_input/jsons/rasps.json", "r") as f:
+    with open("generate_input/jsons/rasps.json", "r", encoding="utf-8") as f:
         rasps = json.load(f)["rasps"]
         computer_rasps = [rasp for rasp in rasps if rasp["needs_computers"] == "0"]
 
@@ -761,13 +761,13 @@ def tighten_rasp_needs_computers():
         rasp["needs_computers"] = "1"
         rasps[i] = rasp
 
-    with open("generate_input/jsons/rasps.json", "w") as f:
+    with open("generate_input/jsons/rasps.json", "w", encoding="utf-8") as f:
         obj = {"rasps": rasps}
         json.dump(obj, f)
 
 
 def tighten_rasp_random_dtstart_weekday():
-    with open("generate_input/jsons/rasps.json", "r") as f:
+    with open("generate_input/jsons/rasps.json", "r", encoding="utf-8") as f:
         rasps = json.load(f)["rasps"]
         no_rnd_dt_rasps = [rasp for rasp in rasps if rasp["random_dtstart_weekday"] == "1"]
 
@@ -784,16 +784,16 @@ def tighten_rasp_random_dtstart_weekday():
         rasp["random_dtstart_weekday"] = "0"
         rasps[i] = rasp
 
-    with open("generate_input/jsons/rasps.json", "w") as f:
+    with open("generate_input/jsons/rasps.json", "w", encoding="utf-8") as f:
         obj = {"rasps": rasps}
         json.dump(obj, f)
 
 
 def tighten_rasp_fix_at_room_id():
-    with open("generate_input/jsons/rasps.json", "r") as f:
+    with open("generate_input/jsons/rasps.json", "r", encoding="utf-8") as f:
         rasps = json.load(f)["rasps"]
 
-    with open("generate_input/jsons/classrooms.json", "r") as f:
+    with open("generate_input/jsons/classrooms.json", "r", encoding="utf-8") as f:
         classrooms = json.load(f)["classrooms"]
 
     NUM_RASPS = len(rasps)
@@ -814,7 +814,7 @@ def tighten_rasp_fix_at_room_id():
         rnd_room_id = random.choice(room_pool)["id"]
         rasp["fix_at_room_id"] = rnd_room_id
 
-    with open("generate_input/jsons/rasps.json", "w") as f:
+    with open("generate_input/jsons/rasps.json", "w", encoding="utf-8") as f:
         obj = {"rasps": rasps}
         json.dump(obj, f)
 

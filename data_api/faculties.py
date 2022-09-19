@@ -12,7 +12,7 @@ def get_faculties():
     settings = load_settings()
     faculties_path = settings["path_faculties_json"]
 
-    with open(faculties_path, "r") as fp:
+    with open(faculties_path, "r", encoding="utf-8") as fp:
         faculties = json.load(fp)["faculties"]
 
     typed_faculties = []
@@ -32,7 +32,7 @@ def get_faculty_ids_csv():
     settings = load_settings()
     faculties_path = settings["path_faculties_csv"]
 
-    with open(faculties_path) as csv_file:
+    with open(faculties_path, encoding="utf-8") as csv_file:
         faculties = pd.read_csv(csv_file,
                                 delimiter=",",
                                 usecols=[0,1])

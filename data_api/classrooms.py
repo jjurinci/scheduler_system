@@ -15,7 +15,7 @@ def get_rooms():
     settings = load_settings()
     rooms_path = settings["path_classrooms_json"]
 
-    with open(rooms_path, "r") as fp:
+    with open(rooms_path, "r", encoding="utf-8") as fp:
         rooms = json.load(fp)["classrooms"]
 
     typed_rooms = []
@@ -36,7 +36,7 @@ def get_rooms():
 def get_classroom_ids_csv():
     settings = load_settings()
     rooms_path = settings["path_classrooms_csv"]
-    with open(rooms_path) as csv_file:
+    with open(rooms_path, encoding="utf-8") as csv_file:
         classrooms = pd.read_csv(csv_file,
                                  delimiter=",",
                                  usecols=[0,1,2,3])
@@ -52,7 +52,7 @@ Returns initial room constraints from a .json file.
 def get_rooms_constraints():
     settings = load_settings()
     rooms_available_path = settings["path_classroom_available_json"]
-    with open(rooms_available_path, "r") as fp:
+    with open(rooms_available_path, "r", encoding="utf-8") as fp:
         rooms_available = json.load(fp)["classroom_available"]
     return rooms_available
 

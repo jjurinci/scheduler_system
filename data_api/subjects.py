@@ -11,7 +11,7 @@ from utilities.general_utilities import load_settings
 def get_subjects():
     settings = load_settings()
     subjects_path = settings["path_subjects_json"]
-    with open(subjects_path, "r") as fp:
+    with open(subjects_path, "r", encoding="utf-8") as fp:
         subjects = json.load(fp)["subjects"]
 
     typed_subjects = []
@@ -33,7 +33,7 @@ def get_subjects():
 def get_subject_ids_csv():
     settings = load_settings()
     subjects_path = settings["path_subjects_csv"]
-    with open(subjects_path) as csv_file:
+    with open(subjects_path, encoding="utf-8") as csv_file:
         subjects = pd.read_csv(csv_file,
                                delimiter=",",
                                usecols=[0,1,2,3])

@@ -6,7 +6,7 @@ import os
 Reads a .csv file and converts it to a dictionary [column_name] = list(values).
 """
 def csv_to_dict(path, name):
-    with open(path) as csv_file:
+    with open(path, encoding="utf-8") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=",")
 
         json_dict = {name: []}
@@ -38,7 +38,7 @@ Reads a .csv file and converts it to a dictionary [column_name] = list(values).
 Specifically designed for .csvs with initial constraints.
 """
 def constraints_csv_to_dict(path, name):
-    with open(path) as csv_file:
+    with open(path, encoding="utf-8") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=",")
 
         json_dict = {name: []}
@@ -70,7 +70,7 @@ def constraints_csv_to_dict(path, name):
 Dumps a dictionary into a .json file.
 """
 def dict_to_json(path, dictionary):
-    with open(path, "w") as fp:
+    with open(path, "w", encoding="utf-8") as fp:
         json.dump(dictionary, fp)
 
 

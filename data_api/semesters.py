@@ -15,7 +15,7 @@ import data_api.semesters as seme_api
 def get_semesters():
     settings = load_settings()
     semesters_path = settings["path_semesters_json"]
-    with open(semesters_path, "r") as fp:
+    with open(semesters_path, "r", encoding="utf-8") as fp:
         semesters = json.load(fp)["semesters"]
 
     typed_semesters = []
@@ -36,7 +36,7 @@ def get_semesters():
 def get_semester_ids_csv():
     settings = load_settings()
     semesters_path = settings["path_semesters_csv"]
-    with open(semesters_path) as csv_file:
+    with open(semesters_path, encoding="utf-8") as csv_file:
         semesters = pd.read_csv(csv_file,
                                 delimiter=",",
                                 usecols=[0,1,2,3,4])
