@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 ## Input
 
-Represent your university in the **database** directory. You can do this by changing the .csv files there.
+Represent your university in the **database** directory by changing the .csv files.
 
 In the **database/input** directory, the following can be changed:
 - faculties.csv
@@ -89,11 +89,10 @@ In the **database/constraints** directory, the following can be changed:
 
 ## Analyze .csvs
 
-Check if .csv files are properly formatted by running the following commands:
+Check if .csv files are properly formatted:
 
 ```
 python -m analysis.analyze_input
-python -m analysis.analyze_constraints
 ```
 If there are any errors, they will be printed out.
 
