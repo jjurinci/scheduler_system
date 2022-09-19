@@ -83,7 +83,7 @@ def run():
     classrooms                   = csv_to_dict("database/input/classrooms.csv",         "classrooms")
     professors                   = csv_to_dict("database/input/professors.csv",         "professors")
     day_structure                = csv_to_dict("database/input/day_structure.csv",      "day_structure")
-    start_end_semester           = csv_to_dict("database/input/start_end_semester.csv", "start_end_semester")
+    start_end_year               = csv_to_dict("database/input/start_end_year.csv",     "start_end_year")
 
     dir_path = "temp_storage/database/input"
     if not os.path.exists(dir_path):
@@ -101,7 +101,7 @@ def run():
     dict_to_json("temp_storage/database/input/classrooms.json",         classrooms)
     dict_to_json("temp_storage/database/input/professors.json",         professors)
     dict_to_json("temp_storage/database/input/day_structure.json",      day_structure)
-    dict_to_json("temp_storage/database/input/start_end_semester.json", start_end_semester)
+    dict_to_json("temp_storage/database/input/start_end_year.json", start_end_year)
 
     classroom_available = constraints_csv_to_dict("database/constraints/classroom_available.csv", "classroom_available")
     professor_available = constraints_csv_to_dict("database/constraints/professor_available.csv", "professor_available")

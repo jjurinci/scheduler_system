@@ -16,7 +16,7 @@
     "path_professor_available_json": "temp_storage/database/constraints/professor_available.json",
 
 
-    "path_startendsem_json":  "temp_storage/database/input/start_end_semester.json",
+    "path_startendyear_json":  "temp_storage/database/input/start_end_year.json",
     "path_daystructure_json": "temp_storage/database/input/day_structure.json",
 
     "path_state": "saved_timetables/state.pickle",

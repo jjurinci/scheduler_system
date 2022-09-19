@@ -67,7 +67,7 @@ def analyze_rasps():
     # Has properly formated properties?
 
     #  None in required fields? Proper numbers given?
-    START_SEMESTER_DATE, END_SEMESTER_DATE = time_api.get_start_end_semester()
+    START_SEMESTER_DATE, END_SEMESTER_DATE = time_api.get_start_end_year()
     START_SEMESTER_DATE = datetime(START_SEMESTER_DATE.year, START_SEMESTER_DATE.month, START_SEMESTER_DATE.day, 0, 0, 0)
     END_SEMESTER_DATE   = datetime(END_SEMESTER_DATE.year, END_SEMESTER_DATE.month, END_SEMESTER_DATE.day, 23, 59, 59)
     timeblocks          = time_api.get_timeblocks()

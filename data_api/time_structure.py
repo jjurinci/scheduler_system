@@ -9,14 +9,14 @@ Returns two dates:
 START_SEMESTER_DATE = date when the semester begins.
 END_SEMESTER_DATE   = date when the semester ends.
 """
-def get_start_end_semester():
+def get_start_end_year():
     settings = load_settings()
-    path = settings["path_startendsem_json"]
+    path = settings["path_startendyear_json"]
     with open(path, "r") as fp:
-        start_end_semester = json.load(fp)["start_end_semester"][0]
+        start_end_year = json.load(fp)["start_end_year"][0]
 
-    START_SEMESTER_DATE = start_end_semester["start_semester_date"]
-    END_SEMESTER_DATE   = start_end_semester["end_semester_date"]
+    START_SEMESTER_DATE = start_end_year["start_semester_date"]
+    END_SEMESTER_DATE   = start_end_year["end_semester_date"]
 
     start_list = START_SEMESTER_DATE.split(".")
     day, month, year  = int(start_list[0]), int(start_list[1]), int(start_list[2])
@@ -77,7 +77,7 @@ def get_hour_index_structure(timeblocks):
 Returns TimeStructure object which contains all of the important time variables.
 """
 def get_time_structure():
-    START_SEMESTER_DATE, END_SEMESTER_DATE = get_start_end_semester()
+    START_SEMESTER_DATE, END_SEMESTER_DATE = get_start_end_year()
     NUM_WEEKS  = weeks_between(START_SEMESTER_DATE, END_SEMESTER_DATE)
     timeblocks = get_timeblocks()
     NUM_DAYS   = 5

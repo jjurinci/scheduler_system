@@ -409,7 +409,7 @@ def create_csvs(rasps, professors, semesters_dict, subjects_dict, rooms_dict, st
         writer = csv.writer(f)
         writer.writerow(header_professor_available)
 
-    with open("generate_input/csvs/start_end_semester.csv", "w") as f:
+    with open("generate_input/csvs/start_end_year.csv", "w") as f:
         header_start_end = ["start_semester_date", "end_semester_date"]
         writer = csv.writer(f)
         writer.writerow(header_start_end)
@@ -458,8 +458,8 @@ def create_jsons(rasps, professors, semesters_dict, subjects_dict, rooms_dict, s
         obj = {"professor_available": []}
         json.dump(obj, f)
 
-    with open("generate_input/jsons/start_end_semester.json", "w") as f:
-        obj = {"start_end_semester": [start_end_dict]}
+    with open("generate_input/jsons/start_end_year.json", "w") as f:
+        obj = {"start_end_year": [start_end_dict]}
         json.dump(obj, f)
 
     with open("generate_input/jsons/day_structure.json", "w") as f:
