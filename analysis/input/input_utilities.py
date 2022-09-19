@@ -76,7 +76,7 @@ Returns True if string is strictly a positive integer.
 E.g. 0,1,2,3,4,5,... -> True
 0.1, 1.3, ... -> False
 """
-def is_positive_integer(value: str, include_zero = False):
+def is_positive_integer(value, include_zero = False):
     try:
         float_num = float(value)
         if not float_num.is_integer():
@@ -106,3 +106,52 @@ Returns True if semester has a valid season string.
 """
 def is_valid_season(value: str):
     return True if value=="W" or value=="S" else False
+
+
+"""
+Returns True if date is a valid starting or ending year date.
+"""
+def is_valid_sem_date(date):
+    if not date:
+        return False
+
+    split_dot = date.split(".")
+    if len(split_dot) < 3:
+        return False
+
+    day, month, year = split_dot[0], split_dot[1], split_dot[2]
+    monthdays = {1:31, 2:28, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31}
+
+    if not year.isdigit() or not month.isdigit() or not day.isdigit():
+        return False
+
+    day, month, year = int(day), int(month), int(year)
+    if year < 1 or month < 1 or month > 12:
+        return False
+    if day < 1 or day > monthdays[month]:
+        return False
+
+    return True
+
+"""
+Returns True if timeblock is a valid timeblock.
+"""
+def is_valid_timeblock(timeblock):
+    if not timeblock:
+        return False
+
+    split_dot = timeblock.split("-")
+    if len(split_dot) != 2:
+        return False
+
+    start, end = split_dot[0], split_dot[1]
+    start_split, end_split = start.split(":"), end.split(":")
+
+    if len(start_split) != 2 or len(end_split) != 2:
+        return False
+
+    if len(start_split[0]) != 2 or len(start_split[1]) != 2 or \
+       len(end_split[0]) != 2 or len(end_split[1]) != 2:
+           return False
+
+    return True

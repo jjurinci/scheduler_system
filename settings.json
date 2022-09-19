@@ -6,6 +6,8 @@
     "path_classrooms_csv":          "database/input/classrooms.csv",
     "path_classroom_available_csv": "database/constraints/classroom_available.csv",
     "path_professor_available_csv": "database/constraints/professor_available.csv",
+    "path_startendyear_csv":        "database/input/start_end_year.csv",
+    "path_daystructure_csv":        "database/input/day_structure.csv",
 
     "path_semesters_json":           "temp_storage/database/input/semesters.json",
     "path_subjects_json":            "temp_storage/database/input/subjects.json",
@@ -14,10 +16,8 @@
     "path_classrooms_json":          "temp_storage/database/input/classrooms.json",
     "path_classroom_available_json": "temp_storage/database/constraints/classroom_available.json",
     "path_professor_available_json": "temp_storage/database/constraints/professor_available.json",
-
-
-    "path_startendyear_json":  "temp_storage/database/input/start_end_year.json",
-    "path_daystructure_json": "temp_storage/database/input/day_structure.json",
+    "path_startendyear_json":        "temp_storage/database/input/start_end_year.json",
+    "path_daystructure_json":        "temp_storage/database/input/day_structure.json",
 
     "path_state": "saved_timetables/state.pickle",
 
