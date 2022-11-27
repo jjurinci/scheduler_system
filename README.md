@@ -1,6 +1,6 @@
 # Sustav za optimiranje akademskih rasporeda temeljenih na ponavljajućim pravilima norme iCalendar
 
-### Diplomski rad
+### [Diplomski rad](https://zir.nsk.hr/islandora/object/unipu%3A7311)
 
 Autor: Jurica Jurinčić
 
@@ -28,7 +28,7 @@ pretraživanje.
 
 # System for optimizing academic timetables based on iCalendar recurring rules
 
-### Master's thesis
+### [Master's thesis](https://zir.nsk.hr/islandora/object/unipu%3A7311)
 Author: Jurica Jurinčić
 
 Mentor: doc. dr. sc. Nikola Tanković
